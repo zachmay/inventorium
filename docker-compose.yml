@@ -1,0 +1,24 @@
+database:
+    build: database
+site:
+    build: site
+    command: yesod devel # dev setting
+    # command: /opt/server/dist/build/YourSiteName/YourSiteName # production
+    environment:
+        - HOST=0.0.0.0
+        - PGHOST=database
+        - PGPORT=5432
+        - PGUSER=postgres
+        - PGPASS
+        - PGDATABASE=postgres
+        - APPROOT=http://192.168.59.105:3000
+    links:
+        - database
+    tty:
+        true # dev setting
+    # tty:
+    #     false # production
+    ports:
+        - "3000:3000" # dev setting
+    volumes:
+        - site:/opt/server/
