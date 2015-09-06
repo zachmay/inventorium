@@ -1,0 +1,25 @@
+#!/bin/bash
+
+db_name=`docker-compose ps | grep inventorium_database | cut -f 1 -d ' '`
+
+if [ -z $db_name ]
+then
+    echo "Starting database..."
+    docker-compose run -d database
+    db_name=`docker-compose ps | grep inventorium_database | cut -f 1 -d ' '`
+    echo "Database started with name $db_name"
+else
+    echo "Database already started with name $db_name"
+fi
+
+docker run \
+    -p 3000:3000 \
+    -itv `pwd`/site/:/opt/server \
+    --link $db_name:database \
+    -e "HOST=0.0.0.0" \
+    -e "PGHOST=database" \
+    -e "PGPORT=5432" \
+    -e "PGUSER=postgres" \
+    -e "PGDATABASE=postgres" \
+    -e "APPROOT=http://`boot2docker ip`:3000" \
+    yourname/yesod /bin/bash
