@@ -2,7 +2,7 @@ FROM haskell:7.8
 
 # Install database dependencies
 RUN ["apt-get", "update"]
-RUN ["apt-get", "-y", "install", "libpq-dev"]
+RUN ["apt-get", "-y", "install", "libpq-dev", "postgresql-client"]
 
 # Update cabal and install yesod
 RUN cabal update
