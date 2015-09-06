@@ -9,4 +9,41 @@ Email
     verkey Text Maybe
     UniqueEmail email
 
- -- By default this file is used in Model.hs (which is imported by Foundation.hs)
+Building
+    name Text
+    UniqueBuildingName name
+
+Room
+    name             Text
+    teacher          Text
+    building         BuildingId
+
+ItemType
+    name             Text
+
+Item
+    name             Text
+    serialNumber     Text
+    fundingSource    Text
+    itemType         ItemTypeId
+
+ItemTypeProperty
+    name             Text
+    itemType         ItemTypeId
+
+ItemProperty
+    value            Text
+    itemTypeProperty ItemTypePropertyId
+    item             ItemId
+
+CheckIn
+    item             ItemId
+    room             RoomId
+    date             UTCTime
+    user             UserId
+    
+
+
+
+
+
