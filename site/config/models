@@ -1,49 +1,52 @@
-User
+User json
     ident Text
     password Text Maybe
     UniqueUser ident
-    deriving Typeable
-Email
+    deriving Typeable Show
+
+Email json
     email Text
     user UserId Maybe
     verkey Text Maybe
     UniqueEmail email
+    deriving Show
 
-Building
+Building json
     name Text
     UniqueBuildingName name
+    deriving Show
 
-Room
+Room json
     name             Text
     teacher          Text
     building         BuildingId
+    deriving Show
 
-ItemType
+ItemType json
     name             Text
+    deriving Show
 
-Item
+Item json
     name             Text
     serialNumber     Text
     fundingSource    Text
     itemType         ItemTypeId
+    deriving Show
 
-ItemTypeProperty
+ItemTypeProperty json
     name             Text
     itemType         ItemTypeId
+    deriving Show
 
-ItemProperty
+ItemProperty json
     value            Text
     itemTypeProperty ItemTypePropertyId
     item             ItemId
+    deriving Show
 
-CheckIn
+CheckIn json
     item             ItemId
     room             RoomId
     date             UTCTime
     user             UserId
-    
-
-
-
-
-
+    deriving Show
