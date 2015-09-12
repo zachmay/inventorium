@@ -18,6 +18,9 @@ library
                      Import
                      Import.NoFoundation
                      Model
+                     Query.Facilities
+                     Query.Inventory
+                     Query.Reports
                      Settings
                      Settings.StaticFiles
                      Handler.Common

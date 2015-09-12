@@ -1,40 +1,71 @@
 module Handler.Api where
 
 import Import
+import Query.Facilities as Facilities
+import Query.Inventory  as Inventory
+import Query.Reports    as Reports
 
 defaultApiHandler :: Handler TypedContent
 defaultApiHandler = selectRep $ do
     provideRep $ return $ object []
 
-basicApiHandler :: Value -> Handler TypedContent
-basicApiHandler obj = selectRep $ do
+apiHandler :: Value -> Handler TypedContent
+apiHandler obj = selectRep $ do
     provideRep $ return $ obj
 
-getInventoryR, postInventoryR :: Handler TypedContent
-getInventoryR                      = defaultApiHandler
-postInventoryR                     = defaultApiHandler
 
-getItemR, putItemR, deleteItemR :: ItemId -> Handler TypedContent
-getItemR         itemId            = basicApiHandler $ object [ "item" .= itemId ]
-putItemR         itemId            = basicApiHandler $ object [ "item" .= itemId ]
-deleteItemR      itemId            = basicApiHandler $ object [ "item" .= itemId ]
+{-
+ - Inventory management 
+ -}
+
+
+getInventoryR :: Handler TypedContent
+getInventoryR = do
+    inventory <- Inventory.getInventoryList
+    apiHandler $ toJSON inventory
+
+postInventoryR :: Handler TypedContent
+postInventoryR = do
+    item <- requireJsonBody :: Handler Item
+    itemId <- runDB $ insert item
+    sendResponseStatus created201 . toJSON $ Entity itemId item
+    
+
+getItemR :: ItemId -> Handler TypedContent
+getItemR itemId = do
+    apiHandler $ object [ "item" .= itemId ]
+
+putItemR :: ItemId -> Handler TypedContent
+putItemR itemId = do
+    apiHandler $ object [ "item" .= itemId ]
+
+deleteItemR :: ItemId -> Handler TypedContent
+deleteItemR itemId = do
+    apiHandler $ object [ "item" .= itemId ]
 
 getItemHistoryR, postItemHistoryR :: ItemId -> Handler TypedContent
-getItemHistoryR  itemId            = basicApiHandler $ object [ "item" .= itemId ]
-postItemHistoryR itemId            = basicApiHandler $ object [ "item" .= itemId ]
+getItemHistoryR  itemId            = apiHandler $ object [ "item" .= itemId ]
+postItemHistoryR itemId            = apiHandler $ object [ "item" .= itemId ]
 
 getItemCheckInR :: ItemId -> CheckInId -> Handler TypedContent
-getItemCheckInR  itemId checkInId  = basicApiHandler $ object [ "item" .= itemId, "checkIn" .= checkInId ]
+getItemCheckInR  itemId checkInId  = apiHandler $ object [ "item" .= itemId, "checkIn" .= checkInId ]
+
+{- 
+ - Reports
+ -}
 
 getReportReconciliationR, getReportByTypeR :: Handler TypedContent
 getReportReconciliationR           = defaultApiHandler
 
 getReportByTypeR                   = defaultApiHandler
 
+{-
+ - Facilities Management
+ -}
 getBuildingListR :: Handler TypedContent
 getBuildingListR = do
-    buildingEntities <- runDB $ selectList [] [Asc BuildingName]
-    basicApiHandler $ toJSON buildingEntities
+    buildingEntities <- Facilities.getBuildings
+    apiHandler $ toJSON buildingEntities
 
 {- TODO: Handle duplicate name -}
 {- TODO: Content negotiation, on both request and response -}
@@ -47,40 +78,46 @@ postBuildingListR = do
 getBuildingR :: BuildingId -> Handler TypedContent
 getBuildingR buildingId = do
     building <- runDB $ get404 buildingId
-    basicApiHandler . toJSON $ Entity buildingId building
+    apiHandler . toJSON $ Entity buildingId building
 
 putBuildingR :: BuildingId -> Handler TypedContent
 putBuildingR buildingId = 
-    basicApiHandler $ object [ "building" .= buildingId ]
+    apiHandler $ object [ "building" .= buildingId ]
 
 deleteBuildingR :: BuildingId -> Handler TypedContent
 deleteBuildingR buildingId =
-    basicApiHandler $ object [ "building" .= buildingId ]
+    apiHandler $ object [ "building" .= buildingId ]
 
 getRoomListR :: BuildingId -> Handler TypedContent
-getRoomListR buildingId =
-    basicApiHandler $ object [ "building" .= buildingId ]
+getRoomListR buildingId = do
+    Facilities.buildingExists buildingId
+    rooms <- getBuildingRoomList buildingId
+    apiHandler $ array $ map toJSON rooms
 
 postRoomListR :: BuildingId -> Handler TypedContent
-postRoomListR buildingId =
-    basicApiHandler $ object [ "building" .= buildingId ]
+postRoomListR buildingId = do
+    Facilities.buildingExists buildingId
+    room <- requireJsonBody :: Handler Room
+    roomId <- runDB $ insert room
+    sendResponseStatus created201 . toJSON $ Entity roomId room
 
 getRoomR :: BuildingId -> RoomId -> Handler TypedContent
-getRoomR buildingId roomId =
-    basicApiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
+getRoomR buildingId roomId = do
+    room <- getRoomInBuilding buildingId roomId
+    apiHandler . toJSON $ room
 
 putRoomR :: BuildingId -> RoomId -> Handler TypedContent
 putRoomR buildingId roomId =
-    basicApiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
+    apiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
 
 deleteRoomR :: BuildingId -> RoomId -> Handler TypedContent
 deleteRoomR buildingId roomId =
-    basicApiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
+    apiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
 
 getRoomInventoryR :: BuildingId -> RoomId -> Handler TypedContent
 getRoomInventoryR buildingId roomId =
-    basicApiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
+    apiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
 
 postRoomInventoryR :: BuildingId -> RoomId -> Handler TypedContent
 postRoomInventoryR buildingId roomId =
-    basicApiHandler $ object [ "building" .= buildingId, "room" .= roomId ]
+    apiHandler $ object [ "building" .= buildingId, "room" .= roomId ]

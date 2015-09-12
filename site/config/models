@@ -18,7 +18,7 @@ Building json
 
 Room json
     name             Text
-    teacher          Text
+    description      Text
     building         BuildingId
     deriving Show
 
