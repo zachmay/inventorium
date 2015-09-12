@@ -20,14 +20,13 @@ up*)
     docker run \
         -p 3000:3000 \
         -itv `pwd`/site/:/opt/server \
-        --link $db_name:database \
         -e "HOST=0.0.0.0" \
         -e "PGHOST=database" \
         -e "PGPORT=5432" \
         -e "PGUSER=postgres" \
         -e "PGDATABASE=postgres" \
         -e "APPROOT=http://`boot2docker ip`:3000" \
-        zachmay/inventorium /bin/bash
+        zachmay/inventorium-api /bin/bash
     ;;
 down*)
     echo "Halting boot2docker"

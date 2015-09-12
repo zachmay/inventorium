@@ -1,19 +1,19 @@
 FROM haskell:7.8
 
-# Install database dependencies
+# Install OS-level dependencies
 RUN ["apt-get", "update"]
+RUN ["apt-get", "-y", "install", "wget", "sudo"]
 RUN ["apt-get", "-y", "install", "libpq-dev", "postgresql-client"]
 
-# Update cabal and install yesod
-RUN cabal update
-ADD ./stackage /root/.cabal/stackage
-RUN cat /root/.cabal/config /root/.cabal/stackage > /root/.cabal/config2
-RUN ["mv", "/root/.cabal/config2", "/root/.cabal/config"]
-RUN cabal update
-RUN ["cabal", "install", "yesod-bin", "-j4"]
+# Install Stackage
+RUN wget -q -O- https://s3.amazonaws.com/download.fpcomplete.com/debian/fpco.key | sudo apt-key add -
+RUN echo 'deb http://download.fpcomplete.com/debian/jessie stable main'|sudo tee /etc/apt/sources.list.d/fpco.list
+RUN sudo apt-get update && sudo apt-get install stack -y
 
 # Add our Cabal file before the rest of the codebase, so the next step can cache:
 ADD ./inventorium.cabal /opt/server/inventorium.cabal
+
+RUN cabal update
 
 # Install Haskell dependencies.
 RUN cd /opt/server && cabal install --only-dependencies -j4
