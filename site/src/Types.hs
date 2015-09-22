@@ -4,11 +4,17 @@ import Data.Aeson
 import Data.Text    (Text)
 import GHC.Generics
 import Servant.API
+import Servant (ServantErr)
+import Control.Monad.Reader         (ReaderT, runReaderT, lift)
+import Control.Monad.Trans.Either (EitherT)
+import Config
 
 {- Buildings -}
 
 type BuildingId = Integer
-data Building = Building {}
+data Building = Building { buildingName :: Text
+                         , buildingDescription :: Text
+                         , buildingId :: BuildingId }
               deriving (Generic)
 
 instance ToJSON Building
@@ -41,7 +47,10 @@ instance FromText BuildingExpand where
 {- Rooms -}
 
 type RoomId = Integer
-data Room = Room {}
+data Room = Room { roomName :: Text
+                 , roomDescription :: Text
+                 , roomBuildingId :: BuildingId 
+                 , roomId :: RoomId }
           deriving (Generic)
 
 instance ToJSON Room
@@ -155,3 +164,4 @@ type AuthToken = Text
 
 type Authorized = Header "Authorization" AuthToken
 
+type Handler = ReaderT Config (EitherT ServantErr IO)

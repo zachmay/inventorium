@@ -1,38 +1,42 @@
-module Types.Api.Inventory where
+module Api.Types.Inventory where
 
 import Servant.API
 import Types
 
-type InventoryApi = InventoryListApi
-               :<|> InventoryItemApi 
-               :<|> ItemHistoryApi
+type InventoryApi = 
+    
+    {- Inventory item collections -}
 
-type InventoryListApi =
     "api" :> "inventory"
         :> Authorized
         :> QueryParam "sort" ItemSortBy
         :> QueryParams "expand" ItemExpand
-        :> Get '[JSON] [Item] :<|>
+        :> Get '[JSON] [Item]  :<|>
     "api" :> "inventory"
         :> Authorized
         :> ReqBody '[JSON] Item
         :> Post '[JSON] Item :<|>
-    "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId
+    "api" :> "buildings" :> Capture "buildingId" BuildingId :> "inventory"
         :> Authorized
         :> QueryParam "sort" ItemSortBy
         :> QueryParams "expand" ItemExpand
         :> Get '[JSON] [Item] :<|>
-    "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId
+    "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId :> "inventory"
+        :> Authorized
+        :> QueryParam "sort" ItemSortBy
+        :> QueryParams "expand" ItemExpand
+        :> Get '[JSON] [Item] :<|>
+    "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId :> "inventory"
         :> Authorized
         :> ReqBody '[JSON] Item
-        :> Post '[JSON] Item
-    
+        :> Post '[JSON] Item :<|>
 
-type InventoryItemApi =
+    {- Item resources -}
+
     "api" :> "inventory" :> Capture "itemId" ItemId
         :> Authorized
-        :> QueryParam "expand" ItemExpand
-        :> Get '[JSON] Item :<|>
+        :> QueryParams "expand" ItemExpand
+        :> Get '[JSON] Item :<|> 
     "api" :> "inventory" :> Capture "itemId" ItemId
         :> Authorized
         :> ReqBody '[JSON] Item
@@ -43,17 +47,22 @@ type InventoryItemApi =
         :> Patch '[JSON] Item :<|>
     "api" :> "inventory" :> Capture "itemId" ItemId
         :> Authorized
-        :> Delete '[JSON] ()
+        :> Delete '[JSON] () :<|>
 
-type ItemHistoryApi =
+    {- Item check-in history collection -}
+
     "api" :> "inventory" :> Capture "itemId" ItemId :> "history"
         :> Authorized
+        :> QueryParam "sort" CheckInSortBy
         :> QueryParams "expand" CheckInExpand
         :> Get '[JSON] [CheckIn] :<|>
     "api" :> "inventory" :> Capture "itemId" ItemId :> "history"
         :> Authorized
         :> ReqBody '[JSON] CheckIn
         :> Post '[JSON] CheckIn :<|>
+
+    {- Item check-in resources -}
+
     "api" :> "inventory" :> Capture "itemId" ItemId :> "history" :> "latest"
         :> Authorized
         :> QueryParams "expand" CheckInExpand

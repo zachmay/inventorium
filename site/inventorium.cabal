@@ -16,25 +16,42 @@ executable inventorium-api
   hs-source-dirs:      src
   main-is:             Main.hs
   default-language:    Haskell2010
+  ghc-options:         -fcontext-stack=100
   extensions:          DataKinds
+                     , DeriveDataTypeable
                      , DeriveGeneric
+                     , GADTs
+                     , EmptyDataDecls
+                     , FlexibleContexts
+                     , FlexibleInstances
                      , GeneralizedNewtypeDeriving
+                     , MultiParamTypeClasses
                      , OverloadedStrings
+                     , QuasiQuotes
                      , RecordWildCards
+                     , TemplateHaskell
+                     , TypeFamilies
                      , TypeOperators
   build-depends:       base >= 4.7 && < 5
                      , aeson
+                     , bytestring
                      , containers
                      , either
-                     , either
                      , http-types
+                     , monad-logger
+                     , mtl
+                     , persistent
+                     , persistent-postgresql
+                     , persistent-template
                      , servant
                      , servant-client
                      , servant-docs
                      , servant-server
                      , stm
                      , text
+                     , time
                      , transformers
                      , uuid
                      , wai
+                     , wai-extra
                      , warp

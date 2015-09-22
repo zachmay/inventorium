@@ -1,4 +1,4 @@
-module Types.Api.Reports where
+module Api.Handlers.Reports where
 
 import Servant.API
 import Types

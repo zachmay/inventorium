@@ -1,5 +1,7 @@
 #!/bin/bash
 
+thePort=8081
+
 case $1 in
 up*)
     echo "Starting boot2docker"
@@ -17,16 +19,17 @@ up*)
         echo "Database already started with name $db_name"
     fi
 
-    docker run \
-        -p 3000:3000 \
-        -itv `pwd`/site/:/opt/server \
-        -e "HOST=0.0.0.0" \
-        -e "PGHOST=database" \
-        -e "PGPORT=5432" \
-        -e "PGUSER=postgres" \
-        -e "PGDATABASE=postgres" \
-        -e "APPROOT=http://`boot2docker ip`:3000" \
-        zachmay/inventorium-api /bin/bash
+#    docker run \
+#        -p $thePort:$thePort \
+#        -itv `pwd`/site/:/opt/server \
+#        -e "HOST=0.0.0.0" \
+#        -e "DBHOST=database" \
+#        -e "DBPORT=5432" \
+#        -e "DBUSER=postgres" \
+#        -e "DBDATABASE=postgres" \
+#        -e "PORT=$thePort" \
+#        --link 2eb75ad0d74f:database \
+#        zachmay/inventorium-api /bin/bash
     ;;
 down*)
     echo "Halting boot2docker"

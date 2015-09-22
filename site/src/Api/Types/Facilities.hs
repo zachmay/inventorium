@@ -1,14 +1,10 @@
-module Types.Api.Facilities (FacilitiesApi) where
+module Api.Types.Facilities where
 
 import Servant.API
 import Types
+import Data.Text (Text)
 
-type FacilitiesApi = BuildingListApi
-                :<|> BuildingApi
-                :<|> RoomListApi
-                :<|> RoomApi
-
-type BuildingListApi =
+type FacilitiesApi = 
     "api" :> "buildings"
         :> Authorized
         :> QueryParam "sort" BuildingSortBy
@@ -17,9 +13,8 @@ type BuildingListApi =
     "api" :> "buildings"
         :> Authorized
         :> ReqBody '[JSON] Building 
-        :> Post '[JSON] Building
+        :> Post '[JSON] Building :<|>
 
-type BuildingApi =
     "api" :> "buildings" :> Capture "buildingId" BuildingId
         :> Authorized
         :> QueryParams "expand" BuildingExpand
@@ -34,32 +29,30 @@ type BuildingApi =
         :> Patch '[JSON] Building :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId
         :> Authorized
-        :> Delete '[JSON] ()
+        :> Delete '[JSON] () :<|>
 
-type RoomListApi =
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms"
         :> Authorized
-        :> QueryParams "sort" RoomSortBy
+        :> QueryParam "sort" RoomSortBy
         :> QueryParams "expand" RoomExpand
         :> Get '[JSON] [Room] :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms"
         :> Authorized
         :> ReqBody '[JSON] Room 
-        :> Post '[JSON] Room
+        :> Post '[JSON] Room :<|>
 
-type RoomApi =
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId
         :> Authorized
         :> QueryParams "expand" RoomExpand
-        :> Get '[JSON] Room :<|>
+        :> Get '[JSON] Room  :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId
         :> Authorized
         :> ReqBody '[JSON] Room
-        :> Put '[JSON] Room :<|>
+        :> Put '[JSON] Room  :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId
         :> Authorized
         :> ReqBody '[JSON] Room
         :> Patch '[JSON] Room :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId
         :> Authorized
-        :> Delete '[JSON] Room
+        :> Delete '[JSON] ()
