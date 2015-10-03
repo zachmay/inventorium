@@ -19,17 +19,26 @@ up*)
         echo "Database already started with name $db_name"
     fi
 
-#    docker run \
-#        -p $thePort:$thePort \
-#        -itv `pwd`/site/:/opt/server \
-#        -e "HOST=0.0.0.0" \
-#        -e "DBHOST=database" \
-#        -e "DBPORT=5432" \
-#        -e "DBUSER=postgres" \
-#        -e "DBDATABASE=postgres" \
-#        -e "PORT=$thePort" \
-#        --link 2eb75ad0d74f:database \
-#        zachmay/inventorium-api /bin/bash
+    # Get the container ID of the database
+    db_container_id=`docker ps | grep inventorium_database | cut -f 1 -d ' '`
+    if [ -z $db_container_id ]
+    then
+        echo "Something went horribly awry!"
+    else
+        echo "Starting API server, linking to database image with id $db_container_id"
+    fi
+
+    docker run \
+        -p $thePort:$thePort \
+        -itv `pwd`/site/:/opt/server \
+        -e "HOST=0.0.0.0" \
+        -e "DBHOST=database" \
+        -e "DBPORT=5432" \
+        -e "DBUSER=postgres" \
+        -e "DBDATABASE=postgres" \
+        -e "PORT=$thePort" \
+        --link $db_container_id:database \
+        zachmay/inventorium-api /bin/bash
     ;;
 down*)
     echo "Halting boot2docker"
