@@ -32,24 +32,26 @@ facServer = F.getBuildingList
        :<|> F.postBuildingList
        :<|> F.getBuilding
        :<|> F.putBuilding
-       :<|> F.patchBuilding
        :<|> F.deleteBuilding
        :<|> F.getRoomList
        :<|> F.postRoomList
        :<|> F.getRoom
        :<|> F.putRoom
-       :<|> F.patchRoom
        :<|> F.deleteRoom
 
 invServer :: ServerT InventoryApi AppM
-invServer = I.getMasterInventory
+invServer = I.getItemTypeList
+       :<|> I.postItemTypeList
+       :<|> I.getItemType
+       :<|> I.putItemType
+       :<|> I.deleteItemType
+       :<|> I.getMasterInventory
        :<|> I.postMasterInventory
        :<|> I.getBuildingInventory
        :<|> I.getRoomInventory
        :<|> I.postRoomInventory
        :<|> I.getItem
        :<|> I.putItem
-       :<|> I.patchItem
        :<|> I.deleteItem
        :<|> I.getItemHistory
        :<|> I.postItemHistory
@@ -74,9 +76,10 @@ makePool = do
     dbPass <- lookupEnvironment "DBPASS" "postgres"
     dbHost <- lookupEnvironment "DBHOST" "database"
     dbPort <- lookupEnvironment "DBPORT" "5432"
-    let connectionString = pack $ intercalate " " $ zipWith (++) ["host=", "dbname=", "user=", "password=", "port="] 
-                                                                 [dbHost, dbName, dbUser, dbPass, dbPort] in
-        runStdoutLoggingT $ createPostgresqlPool connectionString 4
+    let connectionString = pack $ intercalate " " $ zipWith (++)
+            ["host=", "dbname=", "user=", "password=", "port="] 
+            [dbHost, dbName, dbUser, dbPass, dbPort] in
+                runStdoutLoggingT $ createPostgresqlPool connectionString 4
 
 main :: IO ()
 main = do

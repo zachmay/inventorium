@@ -9,6 +9,7 @@ User json
 Building json
     name Text
     UniqueBuildingName name
+    description Text
     deriving Show
 
 Room json
@@ -19,6 +20,7 @@ Room json
 
 ItemType json
     name             Text
+    UniqueItemTypeName name
     deriving Show
 
 Item json
