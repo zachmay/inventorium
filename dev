@@ -1,5 +1,7 @@
 #!/bin/bash
 
+thePort=8081
+
 case $1 in
 up*)
     echo "Starting boot2docker"
@@ -17,17 +19,26 @@ up*)
         echo "Database already started with name $db_name"
     fi
 
+    # Get the container ID of the database
+    db_container_id=`docker ps | grep inventorium_database | cut -f 1 -d ' '`
+    if [ -z $db_container_id ]
+    then
+        echo "Something went horribly awry!"
+    else
+        echo "Starting API server, linking to database image with id $db_container_id"
+    fi
+
     docker run \
-        -p 3000:3000 \
+        -p $thePort:$thePort \
         -itv `pwd`/site/:/opt/server \
-        --link $db_name:database \
         -e "HOST=0.0.0.0" \
-        -e "PGHOST=database" \
-        -e "PGPORT=5432" \
-        -e "PGUSER=postgres" \
-        -e "PGDATABASE=postgres" \
-        -e "APPROOT=http://`boot2docker ip`:3000" \
-        zachmay/inventorium /bin/bash
+        -e "DBHOST=database" \
+        -e "DBPORT=5432" \
+        -e "DBUSER=postgres" \
+        -e "DBDATABASE=postgres" \
+        -e "PORT=$thePort" \
+        --link $db_container_id:database \
+        zachmay/inventorium-api /bin/bash
     ;;
 down*)
     echo "Halting boot2docker"

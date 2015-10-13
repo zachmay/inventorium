@@ -2,7 +2,7 @@ database:
     build: database
 site:
     build: site
-    command: yesod devel # dev setting
+    command: inventorium-api # dev setting
     # command: /opt/server/dist/build/YourSiteName/YourSiteName # production
     environment:
         - HOST=0.0.0.0

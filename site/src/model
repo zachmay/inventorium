@@ -1,0 +1,49 @@
+User json
+    ident Text
+    password Text Maybe
+    name Text
+    email Email
+    UniqueUser ident
+    deriving Typeable Show
+
+Building json
+    name Text
+    UniqueBuildingName name
+    description Text
+    deriving Show
+
+Room json
+    name             Text
+    description      Text
+    building         BuildingId
+    deriving Show
+
+ItemType json
+    name             Text
+    UniqueItemTypeName name
+    deriving Show
+
+Item json
+    name             Text
+    serialNumber     Text
+    fundingSource    Text
+    itemType         ItemTypeId
+    deriving Show
+
+ItemTypeProperty json
+    name             Text
+    itemType         ItemTypeId
+    deriving Show
+
+ItemProperty json
+    value            Text
+    itemTypeProperty ItemTypePropertyId
+    item             ItemId
+    deriving Show
+
+CheckIn json
+    item             ItemId
+    room             RoomId
+    date             UTCTime
+    user             UserId
+    deriving Show
