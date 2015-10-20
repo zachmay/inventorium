@@ -1,26 +1,37 @@
 User json
-    ident Text
-    password Text Maybe
-    name Text
-    email Email
+    ident            Text
+    password         Text Maybe
+    name             Text
+    email            Email
+
     UniqueUser ident
+
     deriving Typeable Show
 
 Building json
-    name Text
+    name             Text
+    description      Text
+    created          UTCTime default=CURRENT_TIMESTAMP
+    updated          UTCTime default=CURRENT_TIMESTAMP
+
     UniqueBuildingName name
-    description Text
+
     deriving Show
 
 Room json
+    building         BuildingId
     name             Text
     description      Text
-    building         BuildingId
+
+    UniqueNameInBuilding name building
+
     deriving Show
 
 ItemType json
     name             Text
+
     UniqueItemTypeName name
+
     deriving Show
 
 Item json
@@ -28,17 +39,21 @@ Item json
     serialNumber     Text
     fundingSource    Text
     itemType         ItemTypeId
+    currentCheckIn   CheckIn Maybe 
+
     deriving Show
 
 ItemTypeProperty json
     name             Text
     itemType         ItemTypeId
+
     deriving Show
 
 ItemProperty json
     value            Text
     itemTypeProperty ItemTypePropertyId
     item             ItemId
+
     deriving Show
 
 CheckIn json
@@ -46,4 +61,5 @@ CheckIn json
     room             RoomId
     date             UTCTime
     user             UserId
+
     deriving Show

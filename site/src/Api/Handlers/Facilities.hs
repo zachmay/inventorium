@@ -1,32 +1,54 @@
 module Api.Handlers.Facilities where
 
+import Control.Applicative ((<$>))
 import Control.Monad (when)
 import Control.Monad.Trans.Either (EitherT, left)
 import Data.Maybe (isNothing)
+import Data.Map (empty, findWithDefault)
+import Data.Time.Clock (getCurrentTime)
 import Servant
 import Api.Types.Facilities
 import Data.Text (Text)
 import Data.ByteString (append)
 import Control.Monad.IO.Class (liftIO)
 import Auth
-import Util (unimplemented)
-import Models
-import Types
 import Errors
-import Database.Persist.Types (Entity(..), Filter, SelectOpt)
+import Models
+import Sort
+import Types
+import Util (unimplemented, groupMap)
+import Database.Persist.Types (Entity(..), Filter, SelectOpt(..))
 import Database.Persist.Class (count, delete, get, getBy, insert, replace, selectFirst, selectList)
-import Database.Persist ((==.), (!=.))
+import Database.Persist ((==.), (!=.), (<-.))
 
 -- | Building collection
  
 -- | Handles HTTP GET for the building collection.
--- TODO: Honor BuildingSortBy
--- TODO: Honor BuildingExpand
-getBuildingList :: Maybe AuthToken -> Maybe BuildingSortBy -> [BuildingExpand] -> Handler [Entity Building]
+getBuildingList :: Maybe AuthToken -> [SortField BuildingSortBy] -> [BuildingExpand] -> Handler [BuildingDetail]
 getBuildingList auth sortBy expand = do
     checkAuthToken auth 
-    buildings <- runDb $ selectList [] []
-    return buildings
+    buildings <- runDb $ selectList [] (map sortByToQueryOption sortBy)
+    roomMap <- fetchRoomMap $ map entityKey buildings
+    return $ map (gatherBuildingDetails roomMap) buildings
+    where sortByToQueryOption (SortField Ascending  BuildingSortByDateCreated) = Asc  BuildingCreated
+          sortByToQueryOption (SortField Ascending  BuildingSortByDateUpdated) = Asc  BuildingUpdated
+          sortByToQueryOption (SortField Ascending  BuildingSortByDescription) = Asc  BuildingDescription
+          sortByToQueryOption (SortField Ascending  BuildingSortByName)        = Asc  BuildingName
+          sortByToQueryOption (SortField Descending BuildingSortByDateCreated) = Desc BuildingCreated
+          sortByToQueryOption (SortField Descending BuildingSortByDateUpdated) = Desc BuildingUpdated
+          sortByToQueryOption (SortField Descending BuildingSortByDescription) = Desc BuildingDescription
+          sortByToQueryOption (SortField Descending BuildingSortByName)        = Desc BuildingName
+
+          gatherBuildingDetails roomMap b = BuildingDetail { building = b
+                                                           , rooms = if BuildingExpandRooms `elem` expand
+                                                                     then Just $ findWithDefault [] (entityKey b) roomMap
+                                                                     else Nothing }
+
+          fetchRoomMap buildingIds = if BuildingExpandRooms `elem` expand 
+                                     then do
+                                        rooms <- runDb $ selectList [RoomBuilding <-. buildingIds] []
+                                        return $ groupMap (roomBuilding . entityVal) rooms
+                                     else return empty
 
 -- | Handles HTTP POST for the building collection.
 postBuildingList :: Maybe AuthToken -> Building -> Handler (Entity Building)
@@ -39,21 +61,28 @@ postBuildingList auth building = do
 -- | Building resources
 
 -- | Handles HTTP GET for individual building resources.
--- TODO: Honor BuildingExpand
-getBuilding ::  BuildingId -> Maybe AuthToken -> [BuildingExpand] -> Handler (Entity Building)
+getBuilding ::  BuildingId -> Maybe AuthToken -> [BuildingExpand] -> Handler BuildingDetail
 getBuilding buildingId auth expand = do
     checkAuthToken auth
     building <- fetchBuildingOr404 buildingId
-    return $ Entity buildingId building
+    rooms <- fetchRooms
+    return $ BuildingDetail { building = Entity buildingId building, rooms = rooms }
+        where fetchRooms = if BuildingExpandRooms `elem` expand
+                           then do
+                               rooms <- runDb $ selectList [RoomBuilding ==. buildingId] []
+                               return $ Just rooms
+                           else return Nothing
 
 -- | Handles HTTP PUT for individual building resources.
 putBuilding ::  BuildingId -> Maybe AuthToken -> Building -> Handler (Entity Building)
 putBuilding buildingId auth building = do
     checkAuthToken auth
     existing <- fetchBuildingOr404 buildingId
-    validateBuilding (Just buildingId) building
-    runDb $ replace buildingId building
-    return $ Entity buildingId building
+    now <- liftIO $ getCurrentTime
+    let building' = building { buildingUpdated = now }
+    validateBuilding (Just buildingId) building'
+    runDb $ replace buildingId building'
+    return $ Entity buildingId building'
 
 -- | Handles HTTP DELETE for individual building resources.
 --
@@ -75,7 +104,7 @@ deleteBuilding buildingId auth = do
 -- | Handles HTTP GET for a building's room collection.
 -- TODO: Honor RoomSortBy
 -- TODO: Honor RoomExpand
-getRoomList :: BuildingId -> Maybe AuthToken -> Maybe RoomSortBy -> [RoomExpand] -> Handler [Entity Room]
+getRoomList :: BuildingId -> Maybe AuthToken -> [SortField RoomSortBy] -> [RoomExpand] -> Handler [Entity Room]
 getRoomList buildingId auth sortBy expand = do
     checkAuthToken auth 
     building <- fetchBuildingOr404 buildingId

@@ -1,25 +1,28 @@
 module Models where
 
-import Database.Persist.TH (share, mkPersist, sqlSettings, mkMigrate, persistFileWith)
-import Database.Persist.Quasi (lowerCaseSettings)
+import Config
+import Control.Applicative ((<$>))
+import Control.Monad.IO.Class  
+import Control.Monad.Reader        (ReaderT, asks, liftIO, lift)
+import Control.Monad.Reader.Class  
+import Control.Monad.Trans.Either  (left)
+import Data.Aeson
+import Data.Maybe (isNothing)
 import Data.Text (Text, pack, unpack)
-import Text.Read (readMaybe)
 import Data.Time.Clock (UTCTime)
 import Data.Typeable
-import Data.Aeson                  (ToJSON, FromJSON)
-import GHC.Generics                (Generic)
-import Control.Monad.Reader        (ReaderT, asks, liftIO, lift)
-import Control.Monad.Trans.Either  (left)
-import Control.Monad.Reader.Class  
-import Control.Monad.IO.Class  
-import Control.Applicative ((<$>))
 import Database.Persist.Postgresql (SqlBackend(..), runMigration, runSqlPool)
+import Database.Persist.Quasi (lowerCaseSettings)
 import Database.Persist.Sql  
-import Config
-import Types (Handler)
-import Servant.API
-import Servant
 import Database.Persist.Sql (fromSqlKey, toSqlKey)
+import Database.Persist.TH (share, mkPersist, sqlSettings, mkMigrate, persistFileWith)
+import GHC.Generics                (Generic)
+import Servant
+import Servant.API
+import Sort
+import JSONUtil
+import Text.Read (readMaybe)
+import Types (Handler)
 
 type Email = Text
 
@@ -58,22 +61,39 @@ instance ToText CheckInId where
 instance FromText CheckInId where
     fromText t = toSqlKey <$> (readMaybe . unpack $ t)
 
-{- Building sort-by options -}
+{- Extended Building data types -}
+
+
+data BuildingDetail = BuildingDetail { building :: Entity Building
+                                     , rooms :: Maybe [Entity Room] }
+
+instance ToJSON BuildingDetail where
+    toJSON (BuildingDetail { building = b, rooms = rs }) =
+        case base of 
+            Object kv -> if isNothing rs then base
+                                         else base `updateWith` ("rooms", toJSON rs)
+        where base = toJSON b
+
+
 
 data BuildingSortBy = BuildingSortByDateCreated
-                    | BuildingSortByDateModified
+                    | BuildingSortByDateUpdated
+                    | BuildingSortByDescription
                     | BuildingSortByName
                     deriving (Eq, Ord, Show)
 
 instance ToText BuildingSortBy where
-    toText BuildingSortByDateCreated  = "created"
-    toText BuildingSortByDateModified = "modified"
-    toText BuildingSortByName         = "name"
+    toText BuildingSortByDateCreated = "created"
+    toText BuildingSortByDateUpdated = "updated"
+    toText BuildingSortByDescription = "description"
+    toText BuildingSortByName        = "name"
 
 instance FromText BuildingSortBy where
-    fromText "created"  = Just BuildingSortByDateCreated
-    fromText "modified" = Just BuildingSortByDateModified
-    fromText "name"     = Just BuildingSortByName
+    fromText "created"     = Just BuildingSortByDateCreated
+    fromText "updated"     = Just BuildingSortByDateUpdated
+    fromText "description" = Just BuildingSortByDescription
+    fromText "name"        = Just BuildingSortByName
+    fromText _             = Nothing
 
 {- Building 'expand' options -}
 
@@ -85,26 +105,28 @@ instance ToText BuildingExpand where
 
 instance FromText BuildingExpand where
     fromText "rooms" = Just BuildingExpandRooms
+    fromText _       = Nothing
 
 {- Room 'sort-by' options -}
 
 data RoomSortBy = RoomSortByDateCreated
-                | RoomSortByDateModified
+                | RoomSortByDateUpdated
                 | RoomSortByName
                 | RoomSortByDescription
                 deriving (Eq, Ord, Show)
 
 instance ToText RoomSortBy where
-    toText RoomSortByDateCreated     = "created"
-    toText RoomSortByDateModified    = "modified"
-    toText RoomSortByName            = "name"
-    toText RoomSortByDescription     = "description"
+    toText RoomSortByDateCreated = "created"
+    toText RoomSortByDateUpdated = "updated"
+    toText RoomSortByName        = "name"
+    toText RoomSortByDescription = "description"
 
 instance FromText RoomSortBy where
     fromText "created"     = Just RoomSortByDateCreated
-    fromText "modified"    = Just RoomSortByDateModified
+    fromText "updated"     = Just RoomSortByDateUpdated
     fromText "name"        = Just RoomSortByName
     fromText "description" = Just RoomSortByDescription
+    fromText _             = Nothing
 
 {- Room 'expand' options -}
 
@@ -116,26 +138,28 @@ instance ToText RoomExpand where
 
 instance FromText RoomExpand where
     fromText "inventory" = Just RoomExpandInventory
+    fromText _           = Nothing
 
 {- Item 'sort-by' options -}
 
 data ItemSortBy = ItemSortByDateCreated
-                | ItemSortByDateModified
+                | ItemSortByDateUpdated
                 | ItemSortByCheckInDate
                 | ItemSortByName
                 deriving (Eq, Ord, Show)
 
 instance ToText ItemSortBy where
-    toText ItemSortByDateCreated  = "created"
-    toText ItemSortByDateModified = "modified"
-    toText ItemSortByCheckInDate  = "checkin"
-    toText ItemSortByName         = "name"
+    toText ItemSortByDateCreated = "created"
+    toText ItemSortByDateUpdated = "updated"
+    toText ItemSortByCheckInDate = "checkin"
+    toText ItemSortByName        = "name"
 
 instance FromText ItemSortBy where
     fromText "created"  = Just ItemSortByDateCreated
-    fromText "modified" = Just ItemSortByDateModified
+    fromText "updated"  = Just ItemSortByDateUpdated
     fromText "checkin"  = Just ItemSortByCheckInDate
     fromText "name"     = Just ItemSortByName
+    fromText _          = Nothing
 
 {- Item 'expand' options -}
 
@@ -147,6 +171,7 @@ instance ToText ItemExpand where
 
 instance FromText ItemExpand where
     fromText "checkins" = Just ItemExpandCheckIns
+    fromText _          = Nothing
 
 {- Check-in 'sort-by' options -}
 
@@ -158,6 +183,7 @@ instance ToText CheckInSortBy where
 
 instance FromText CheckInSortBy where
     fromText "date" = Just CheckInSortByDate
+    fromText _      = Nothing
 
 {- Check-in 'expand' options -}
 
@@ -169,6 +195,7 @@ instance ToText CheckInExpand where
 
 instance FromText CheckInExpand where
     fromText "user" = Just CheckInExpandUser
+    fromText _      = Nothing
 
 {- Report data types -}
 

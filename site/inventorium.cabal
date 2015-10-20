@@ -51,6 +51,7 @@ executable inventorium-api
                      , text
                      , time
                      , transformers
+                     , unordered-containers
                      , uuid
                      , wai
                      , wai-extra
