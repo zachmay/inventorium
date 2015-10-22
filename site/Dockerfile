@@ -1,4 +1,4 @@
-FROM haskell:7.8
+FROM haskell:7.10
 
 # Install OS-level dependencies
 RUN ["apt-get", "update"]
