@@ -16,10 +16,13 @@ import Errors
 import Models
 import Sort
 import Types
+import Queries.Facilities
 import Util (unimplemented, groupMap)
 import Database.Persist.Types (Entity(..), Filter, SelectOpt(..))
 import Database.Persist.Class (count, delete, get, getBy, insert, replace, selectFirst, selectList)
 import Database.Persist ((==.), (!=.), (<-.))
+
+-----------------------------------------------------------------------------
 
 -- | Building collection
  
@@ -39,10 +42,11 @@ getBuildingList auth sortBy expand = do
           sortByToQueryOption (SortField Descending BuildingSortByDescription) = Desc BuildingDescription
           sortByToQueryOption (SortField Descending BuildingSortByName)        = Desc BuildingName
 
-          gatherBuildingDetails roomMap b = BuildingDetail { building = b
-                                                           , rooms = if BuildingExpandRooms `elem` expand
-                                                                     then Just $ findWithDefault [] (entityKey b) roomMap
-                                                                     else Nothing }
+          gatherBuildingDetails roomMap b =
+              BuildingDetail { building = b
+                             , rooms = if BuildingExpandRooms `elem` expand
+                                       then Just $ findWithDefault [] (entityKey b) roomMap
+                                       else Nothing }
 
           fetchRoomMap buildingIds = if BuildingExpandRooms `elem` expand 
                                      then do
@@ -57,6 +61,8 @@ postBuildingList auth building = do
     validateBuilding Nothing building
     buildingId <- runDb $ insert building
     return $ Entity buildingId building
+
+-----------------------------------------------------------------------------
 
 -- | Building resources
 
@@ -99,17 +105,26 @@ deleteBuilding buildingId auth = do
     runDb $ delete buildingId
     return ()
 
+-----------------------------------------------------------------------------
+
 -- | Building room list collection
 
 -- | Handles HTTP GET for a building's room collection.
--- TODO: Honor RoomSortBy
 -- TODO: Honor RoomExpand
 getRoomList :: BuildingId -> Maybe AuthToken -> [SortField RoomSortBy] -> [RoomExpand] -> Handler [Entity Room]
 getRoomList buildingId auth sortBy expand = do
     checkAuthToken auth 
     building <- fetchBuildingOr404 buildingId
-    rooms <- runDb $ selectList [RoomBuilding ==. buildingId] []
+    rooms <- runDb $ selectList [RoomBuilding ==. buildingId] (map sortByToQueryOption sortBy)
     return rooms
+    where sortByToQueryOption (SortField Ascending  RoomSortByDateCreated) = Asc  RoomCreated
+          sortByToQueryOption (SortField Ascending  RoomSortByDateUpdated) = Asc  RoomUpdated
+          sortByToQueryOption (SortField Ascending  RoomSortByDescription) = Asc  RoomDescription
+          sortByToQueryOption (SortField Ascending  RoomSortByName)        = Asc  RoomName
+          sortByToQueryOption (SortField Descending RoomSortByDateCreated) = Desc RoomCreated
+          sortByToQueryOption (SortField Descending RoomSortByDateUpdated) = Desc RoomUpdated
+          sortByToQueryOption (SortField Descending RoomSortByDescription) = Desc RoomDescription
+          sortByToQueryOption (SortField Descending RoomSortByName)        = Desc RoomName
 
 -- | Handles HTTP POST for a building's room collection.
 postRoomList :: BuildingId -> Maybe AuthToken -> Room -> Handler (Entity Room)

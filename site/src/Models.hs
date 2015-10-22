@@ -173,6 +173,15 @@ instance FromText ItemExpand where
     fromText "checkins" = Just ItemExpandCheckIns
     fromText _          = Nothing
 
+data ItemDetail = ItemDetail { item :: Entity Item
+                             , currentCheckIn :: Maybe (Entity CheckIn) }
+
+instance ToJSON ItemDetail where
+    toJSON (ItemDetail { item = i, currentCheckIn = c }) =
+        case base of
+            Object kv -> base `updateWith` ("currentCheckIn", toJSON c)
+        where base = toJSON i
+
 {- Check-in 'sort-by' options -}
 
 data CheckInSortBy = CheckInSortByDate
@@ -202,12 +211,14 @@ instance FromText CheckInExpand where
 data ReconciliationReport = ReconciliationReport {}
                           deriving (Generic)
 
-instance ToJSON ReconciliationReport
+instance ToJSON ReconciliationReport where
+    toJSON r = Null
 
 data ByTypeReport = ByTypeReport {}
                   deriving (Generic)
 
-instance ToJSON ByTypeReport
+instance ToJSON ByTypeReport where
+    toJSON r = Null
 
 {-
  - Database-related helper functions -} 

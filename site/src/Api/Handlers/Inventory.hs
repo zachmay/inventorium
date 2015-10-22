@@ -13,6 +13,7 @@ import Util (unimplemented)
 import Models
 import Types
 import Errors
+import Queries.Facilities
 import Database.Persist.Types (Entity(..), Filter, SelectOpt)
 import Database.Persist.Class (count, delete, get, getBy, insert, replace, selectFirst, selectList)
 import Database.Persist ((==.), (!=.))
@@ -32,6 +33,7 @@ postItemTypeList auth itemType = do
     return $ Entity itemTypeId itemType
 
 -- | Handles HTTP GET for individual item type resources.
+-- TODO: Get list of fields for this item type
 getItemType :: ItemTypeId -> Maybe AuthToken -> Handler (Entity ItemType)
 getItemType itemTypeId auth = do
     checkAuthToken auth
@@ -79,8 +81,12 @@ postRoomInventory bid rid auth item = failNotImplemented
 
 {- Individual item resources -}
 
-getItem :: ItemId -> Maybe AuthToken -> [ItemExpand] -> Handler (Entity Item)
-getItem iid auth expand = failNotImplemented
+-- TODO: Implement
+getItem :: ItemId -> Maybe AuthToken -> [ItemExpand] -> Handler ItemDetail
+getItem iid auth expand = do
+    checkAuthToken auth
+    [(item, maybeCheckIn)] <- runDb $ getItemCurrentCheckIn iid
+    return $ ItemDetail { item = item, currentCheckIn = maybeCheckIn }
 
 putItem :: ItemId -> Maybe AuthToken -> Item -> Handler (Entity Item)
 putItem iid auth item = failNotImplemented

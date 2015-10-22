@@ -59,7 +59,7 @@ type InventoryApi =
     "api" :> "inventory" :> Capture "itemId" ItemId
         :> Authorized
         :> QueryParams "expand" ItemExpand
-        :> Get '[JSON] (Entity Item) :<|> 
+        :> Get '[JSON] ItemDetail :<|> 
     "api" :> "inventory" :> Capture "itemId" ItemId
         :> Authorized
         :> ReqBody '[JSON] Item
