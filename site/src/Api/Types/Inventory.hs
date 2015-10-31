@@ -12,7 +12,8 @@ type InventoryApi =
 
     "api" :> "item-types"
         :> Authorized
-        :> Get '[JSON] [Entity ItemType] :<|>
+        :> QueryParams "expand" ItemTypeExpand
+        :> Get '[JSON] [ItemTypeDetail] :<|>
     "api" :> "item-types"
         :> Authorized
         :> ReqBody '[JSON] ItemType 

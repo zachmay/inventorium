@@ -8,6 +8,7 @@ import Control.Monad.Reader.Class
 import Control.Monad.Trans.Either  (left)
 import Data.Aeson
 import Data.Maybe (isNothing)
+import Data.Ord
 import Data.Text (Text, pack, unpack)
 import Data.Time.Clock (UTCTime)
 import Data.Typeable
@@ -22,7 +23,7 @@ import Servant.API
 import Sort
 import JSONUtil
 import Text.Read (readMaybe)
-import Types (Handler)
+import Types
 
 type Email = Text
 
@@ -182,6 +183,30 @@ instance ToJSON ItemDetail where
             Object kv -> base `updateWith` ("currentCheckIn", toJSON c)
         where base = toJSON i
 
+{- Extended data types for Item Types -}
+    
+data ItemTypeDetail = ItemTypeDetail { itemType :: Entity ItemType
+                                     , properties :: Maybe [Entity ItemTypeProperty] }
+
+instance ToJSON ItemTypeDetail where
+    toJSON (ItemTypeDetail { itemType = it, properties = props }) =
+        case base of
+            Object kv -> case props of
+                             Nothing  -> base
+                             Just ps -> base `updateWith` ("properties", toJSON ps)
+        where base = toJSON it
+
+
+data ItemTypeExpand = ItemTypeExpandProperties
+                    deriving (Eq, Ord, Show)
+
+instance ToText ItemTypeExpand where
+    toText ItemTypeExpandProperties = "properties"
+
+instance FromText ItemTypeExpand where
+    fromText "properties" = Just ItemTypeExpandProperties
+    fromText _            = Nothing
+
 {- Check-in 'sort-by' options -}
 
 data CheckInSortBy = CheckInSortByDate
@@ -226,7 +251,7 @@ instance ToJSON ByTypeReport where
 doMigrations :: ReaderT SqlBackend IO ()
 doMigrations = runMigration migrateAll
 
--- runDb :: SqlPersistT IO b -> Handler b
+runDb :: SqlPersistT IO b -> Handler b
 runDb query = do
     pool <- asks getPool
     liftIO $ runSqlPool query pool

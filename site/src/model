@@ -5,7 +5,7 @@ User json
 
     UniqueUser email
 
-    deriving Typeable Show
+    deriving Eq Ord Show Typeable 
 
 Building json
     name             Text
@@ -15,7 +15,7 @@ Building json
 
     UniqueBuildingName name
 
-    deriving Show
+    deriving Eq Ord Show
 
 Room json
     building         BuildingId
@@ -26,14 +26,14 @@ Room json
 
     UniqueNameInBuilding name building
 
-    deriving Show
+    deriving Eq Ord Show
 
 ItemType json
     name             Text
 
     UniqueItemTypeName name
 
-    deriving Show
+    deriving Eq Ord Show
 
 Item json
     name             Text
@@ -41,21 +41,26 @@ Item json
     fundingSource    Text
     itemType         ItemTypeId
     currentCheckIn   CheckInId Maybe 
+    created          UTCTime default=CURRENT_TIMESTAMP
+    updated          UTCTime default=CURRENT_TIMESTAMP
 
-    deriving Show
+    deriving Eq Ord Show
 
 ItemTypeProperty json
     name             Text
+    label            Text
+    dataType         PropertyType
+    required         Bool
     itemType         ItemTypeId
 
-    deriving Show
+    deriving Eq Ord Show
 
 ItemProperty json
     value            Text
     itemTypeProperty ItemTypePropertyId
     item             ItemId
 
-    deriving Show
+    deriving Eq Ord Show
 
 CheckIn json
     item             ItemId
@@ -63,4 +68,4 @@ CheckIn json
     date             UTCTime
     user             UserId
 
-    deriving Show
+    deriving Eq Ord Show

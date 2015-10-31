@@ -38,12 +38,17 @@ lookupSetting env def = do
     return $ case p of Nothing -> def
                        Just a  -> read a
 
-
-groupMap :: (Ord k) => (v -> k) -> [v] -> Map k [v]
-groupMap key vs = fromList . factorKeys . groupBy keysEqual . sortBy comparingKeys . map toKeyValue $ vs
-    where toKeyValue x = (key x, x)
-          keysEqual x y = fst x == fst y
+groupPairs :: (Ord k) => [(k, v)] -> [(k, [v])]
+groupPairs pairs = factorKeys . groupBy keysEqual . sortBy comparingKeys $ pairs
+    where keysEqual x y = fst x == fst y
           comparingKeys = comparing fst
           factorKeys = map (\xs -> (fst . head $ xs, map snd xs))
+
+groupList :: (Ord k) => (v -> k) -> [v] -> [(k, [v])]
+groupList key vs = groupPairs . map toKeyValue $ vs
+    where toKeyValue x = (key x, x)
+
+groupMap :: (Ord k) => (v -> k) -> [v] -> Map k [v]
+groupMap key vs = fromList . groupList key $ vs
 
 

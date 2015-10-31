@@ -7,22 +7,32 @@ import Servant
 import Api.Types.Facilities
 import Data.Text (Text)
 import Data.ByteString (append)
+import Data.Time.Clock (getCurrentTime)
 import Control.Monad.IO.Class (liftIO)
 import Auth
-import Util (unimplemented)
+import Util
 import Models
 import Types
 import Errors
-import Queries.Facilities
+import Queries.Inventory
 import Database.Persist.Types (Entity(..), Filter, SelectOpt)
 import Database.Persist.Class (count, delete, get, getBy, insert, replace, selectFirst, selectList)
 import Database.Persist ((==.), (!=.))
 
 -- | Handles HTTP GET for the item type collection.
-getItemTypeList :: Maybe AuthToken -> Handler [Entity ItemType]
-getItemTypeList auth = do
+getItemTypeList :: Maybe AuthToken -> [ItemTypeExpand] -> Handler [ItemTypeDetail]
+getItemTypeList auth expand = do 
     checkAuthToken auth
-    runDb $ selectList [] []
+    itemTypes <- if ItemTypeExpandProperties `elem` expand
+                     then do
+                         its <- runDb $ getItemTypesWithProperties 
+                         let grouped = groupPairs its
+                         return $ map (\(it, ps) -> (it, Just ps)) grouped
+                     else do
+                         its <- runDb $ selectList [] []
+                         return $ map (\it -> (it, Nothing)) its
+    return $ map (\(it, props) -> ItemTypeDetail { itemType = it, properties = props }) itemTypes
+        
 
 -- | Handles HTTP POST for the item type collection.
 postItemTypeList :: Maybe AuthToken -> ItemType -> Handler (Entity ItemType)
@@ -68,28 +78,47 @@ getMasterInventory auth sort expand = do
 
 -- | Handles HTTP POST for the master inventory list collection.
 postMasterInventory :: Maybe AuthToken -> Item -> Handler (Entity Item)
-postMasterInventory auth item = failNotImplemented
+postMasterInventory auth item = do
+    checkAuthToken auth
+    validateItem item
+    itemId <- runDb $ insert item
+    return $ Entity itemId item
 
+-- Handles HTTP GET for a building's inventory collection.
 getBuildingInventory :: BuildingId -> Maybe AuthToken -> Maybe ItemSortBy -> [ItemExpand] -> Handler [Entity Item]
 getBuildingInventory bid auth sort expand = failNotImplemented
 
+-- | Handles HTTP GET for a room's inventory collection.
 getRoomInventory :: BuildingId -> RoomId -> Maybe AuthToken -> Maybe ItemSortBy -> [ItemExpand] -> Handler [Entity Item]
 getRoomInventory bid rid auth sort expand = failNotImplemented
 
+-- | Handles HTTP POST for a room's inventory collection.
 postRoomInventory :: BuildingId -> RoomId -> Maybe AuthToken -> Item -> Handler (Entity Item)
 postRoomInventory bid rid auth item = failNotImplemented
 
 {- Individual item resources -}
 
--- TODO: Implement
+-- | Handles HTTP GET for individual inventory item resources.
 getItem :: ItemId -> Maybe AuthToken -> [ItemExpand] -> Handler ItemDetail
 getItem iid auth expand = do
+    fail404 "barf"
+{-
     checkAuthToken auth
-    [(item, maybeCheckIn)] <- runDb $ getItemCurrentCheckIn iid
-    return $ ItemDetail { item = item, currentCheckIn = maybeCheckIn }
+    result <- runDb $ getItemWithCurrentCheckIn iid
+    case result of
+        [(item, maybeCheckIn)] -> return $ ItemDetail { item = item, currentCheckIn = maybeCheckIn }
+        []                     -> fail404 "Item not found."
+        -}
 
 putItem :: ItemId -> Maybe AuthToken -> Item -> Handler (Entity Item)
-putItem iid auth item = failNotImplemented
+putItem itemId auth item = do
+    checkAuthToken auth
+    existingItem <- fetchItemOr404 itemId
+    validateItem item
+    now <- liftIO $ getCurrentTime
+    let item' = item { itemUpdated = now }
+    runDb $ replace itemId item'
+    return $ Entity itemId item'
 
 deleteItem :: ItemId -> Maybe AuthToken -> Handler ()
 deleteItem iid auth = failNotImplemented
@@ -147,3 +176,34 @@ validateItemType itemTypeId itemType = do
 
     return ()
 
+-- | Attempts to find an item type with the given ID, failing if none is found.
+fetchItemOr404 :: ItemId -> Handler Item
+fetchItemOr404 itemId = do
+    maybeItem <- runDb $ get itemId
+    case maybeItem of
+        Nothing   -> fail404 "Item not found."
+        Just item -> return item
+
+-- | Validates item details.
+--
+-- Validations:
+--   * Item name must not be empty.
+--   * Item serial number must not be empty.
+--   * Item funding source must not be empty.
+--   * The item type ID correspond to an existing item type.
+validateItem :: Item -> Handler ()
+validateItem item = do
+    let name   = itemName item
+        serial = itemSerialNumber item
+        source = itemFundingSource item
+        typeId = itemItemType item
+    when (name == "") $ do
+        fail400 "Item name may not be empty."
+    when (serial == "") $ do
+        fail400 "Item serial number may not be empty."
+    when (source == "") $ do
+        fail400 "Item funding source may not be empty."
+    itemType <- runDb $ get typeId
+    case itemType of
+        Just _  -> return ()
+        Nothing -> fail400 "Item type ID does not exist."
