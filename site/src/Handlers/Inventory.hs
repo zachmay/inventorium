@@ -1,23 +1,50 @@
-module Api.Handlers.Inventory where
+module Handlers.Inventory (inventoryHandlers) where
 
 import Control.Monad (when)
 import Control.Monad.Trans.Either (EitherT, left)
 import Data.Maybe (isNothing)
 import Servant
-import Api.Types.Facilities
 import Data.Text (Text)
 import Data.ByteString (append)
 import Data.Time.Clock (getCurrentTime)
 import Control.Monad.IO.Class (liftIO)
-import Auth
-import Util
-import Models
-import Types
-import Errors
 import Queries.Inventory
 import Database.Persist.Types (Entity(..), Filter, SelectOpt)
 import Database.Persist.Class (count, delete, get, getBy, insert, replace, selectFirst, selectList)
 import Database.Persist ((==.), (!=.))
+
+import Handlers.Auth
+import Handlers.Errors
+import Types.Api.Inventory
+import Types.Misc
+import Types.Model.Persistent
+import Types.Model.CheckIn
+import Types.Model.Item
+import Types.Model.ItemType
+import Util
+
+-----------------------------------------------------------------------------
+
+inventoryHandlers :: ServerT InventoryApi Handler
+inventoryHandlers = getItemTypeList
+               :<|> postItemTypeList
+               :<|> getItemType
+               :<|> putItemType
+               :<|> deleteItemType
+               :<|> getMasterInventory
+               :<|> postMasterInventory
+               :<|> getBuildingInventory
+               :<|> getRoomInventory
+               :<|> postRoomInventory
+               :<|> getItem
+               :<|> putItem
+               :<|> deleteItem
+               :<|> getItemHistory
+               :<|> postItemHistory
+               :<|> getItemLatestCheckIn
+               :<|> getItemCheckIn
+
+-----------------------------------------------------------------------------
 
 -- | Handles HTTP GET for the item type collection.
 getItemTypeList :: Maybe AuthToken -> [ItemTypeExpand] -> Handler [ItemTypeDetail]

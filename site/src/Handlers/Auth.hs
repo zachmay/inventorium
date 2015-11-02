@@ -1,6 +1,6 @@
-module Auth where
+module Handlers.Auth where
 
-import Types (AuthToken, Handler)
+import Types.Misc
 import Control.Monad.IO.Class (liftIO);
 import Control.Monad.Trans.Either
 import Servant.Server

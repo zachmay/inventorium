@@ -1,4 +1,4 @@
-module Errors where
+module Handlers.Errors where
 
 import Control.Monad.Reader (lift)
 import Control.Monad.Trans.Either (EitherT, left)
@@ -6,7 +6,8 @@ import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.ByteString.Lazy (ByteString)
 import Servant.Server
-import Types
+
+import Types.Misc
 
 failWithMessage :: ServantErr -> ByteString -> Handler a
 failWithMessage baseError message = failure $ baseError { errBody = message }

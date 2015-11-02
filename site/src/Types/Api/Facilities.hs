@@ -1,11 +1,12 @@
-module Api.Types.Facilities where
+module Types.Api.Facilities where
 
-import Servant.API
-import Types
-import Models
-import Sort
 import Database.Persist (Entity, Key)
-import Data.Text (Text)
+import Servant.API
+
+import Types.Model.Building
+import Types.Model.Room
+import Types.Misc
+import Types.Sort
 
 type FacilitiesApi = 
     "api" :> "buildings"

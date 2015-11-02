@@ -2,8 +2,12 @@ module Queries.Inventory where
 
 import Database.Esqueleto
 
-import Models
-import Types
+import Types.Misc
+import Types.Model.Persistent
+import Types.Model.CheckIn
+import Types.Model.Item
+import Types.Model.ItemType
+import Types.Model.ItemTypeProperty
 
 getItemTypesWithProperties :: Query [(Entity ItemType, Entity ItemTypeProperty)]
 getItemTypesWithProperties =

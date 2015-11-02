@@ -1,17 +1,18 @@
 module Util where
 
+import Control.Monad.IO.Class     (liftIO)
+import Control.Monad.Reader       (lift)
 import Control.Monad.Trans.Either (EitherT, left)
-import Control.Monad.Reader (lift)
+import Data.List                  (groupBy, sortBy)
+import Data.Map                   (Map, fromList)
+import Data.Ord                   (comparing)
+import Data.Text                  (Text)
+import Data.Time.Clock            (getCurrentTime)
 import Servant
-import Types
-import Data.List (groupBy, sortBy)
-import Data.Ord (comparing)
-import Data.Text (Text)
-import Control.Monad.IO.Class (liftIO)
-import Servant.Server (ServantErr)
-import Data.Time.Clock (getCurrentTime)
-import System.Environment (lookupEnv)
-import Data.Map (Map, fromList)
+import Servant.Server             (ServantErr)
+import System.Environment         (lookupEnv)
+
+import Types.Misc
 
 consoleLog :: String -> Handler ()
 consoleLog s = do

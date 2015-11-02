@@ -1,18 +1,15 @@
-module Sort where
+module Types.Sort where
 
-import Control.Applicative ((<$>))
-import Data.Maybe (isJust, fromJust)
-import Servant
-import Data.Text (append, intercalate, splitOn, uncons)
+import Data.Text (append, uncons)
+import Servant (ToText, toText, FromText, fromText)
+
+{- Sorting Data Types -}
 
 data SortOrder = Ascending | Descending
                  deriving (Eq, Ord, Show)
 
 data SortField a = SortField SortOrder a
                    deriving (Eq, Ord, Show)
-
-
-{- ToText and FromText instances for SortField -}
 
 instance (ToText a) => ToText (SortField a) where
     toText (SortField Ascending x)  = toText x

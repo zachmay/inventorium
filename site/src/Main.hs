@@ -1,72 +1,40 @@
 module Main where
 
+import Control.Monad.Logger                 (runStdoutLoggingT)
+import Control.Monad.Reader                 (ReaderT, runReaderT, lift)
+import Control.Monad.Trans.Either           (EitherT, left)
+import Data.ByteString.Char8                (pack)
+import Data.List                            (intercalate)
+import Database.Persist.Postgresql          (ConnectionPool, createPostgresqlPool, ConnectionString, runSqlPool)
+import Network.Wai                          (Application)
+import Network.Wai.Handler.Warp             (run)
 import Network.Wai.Middleware.RequestLogger (logStdout)
-import qualified Data.Set                 as Set
-import qualified Data.UUID                as UUID
-import qualified Data.UUID.V4             as UUID
-import           Network.Wai
-import           Network.Wai.Handler.Warp
-import           Servant
-import           Api.Types.Facilities
-import qualified Api.Handlers.Facilities as F
-import           Api.Types.Inventory
-import qualified Api.Handlers.Inventory as I          
-import           Util
-import Models (doMigrations)
-import Database.Persist.Postgresql (ConnectionPool, createPostgresqlPool, ConnectionString, runSqlPool)
-import Control.Monad.Logger                 (runNoLoggingT, runStdoutLoggingT)
-import Data.List (intercalate)
-import Data.ByteString.Char8 (pack)
-import Config
-import Control.Monad.Reader         (ReaderT, runReaderT, lift)
-import Control.Monad.Trans.Either   (EitherT, left)
+import Servant
 
+import Types.Api   (InventoriumApi)
+import Types.App   (Config(..))
+import Types.Misc  (Handler)
+import Handlers    (allHandlers)
+import Util        (lookupEnvironment, lookupSetting)
+import Types.Model.Persistent (doMigrations)
 
-type FullApi = FacilitiesApi :<|> InventoryApi
+main :: IO ()
+main = do
+    port <- lookupSetting "PORT" 3000
+    putStrLn "Starting Inventorium API server..."
+    pool <- makePool
+    let config = Config { getPool = pool }
+    runSqlPool doMigrations pool
+    putStrLn $ "Listening on port " ++ show port
+    run port $ logStdout $ app config
 
-fullServer :: ServerT FullApi AppM
-fullServer = facServer :<|> invServer
-
-facServer :: ServerT FacilitiesApi AppM
-facServer = F.getBuildingList
-       :<|> F.postBuildingList
-       :<|> F.getBuilding
-       :<|> F.putBuilding
-       :<|> F.deleteBuilding
-       :<|> F.getRoomList
-       :<|> F.postRoomList
-       :<|> F.getRoom
-       :<|> F.putRoom
-       :<|> F.deleteRoom
-
-invServer :: ServerT InventoryApi AppM
-invServer = I.getItemTypeList
-       :<|> I.postItemTypeList
-       :<|> I.getItemType
-       :<|> I.putItemType
-       :<|> I.deleteItemType
-       :<|> I.getMasterInventory
-       :<|> I.postMasterInventory
-       :<|> I.getBuildingInventory
-       :<|> I.getRoomInventory
-       :<|> I.postRoomInventory
-       :<|> I.getItem
-       :<|> I.putItem
-       :<|> I.deleteItem
-       :<|> I.getItemHistory
-       :<|> I.postItemHistory
-       :<|> I.getItemLatestCheckIn
-       :<|> I.getItemCheckIn
-
-type AppM = ReaderT Config (EitherT ServantErr IO)
-
-api :: Proxy FullApi
+api :: Proxy InventoriumApi
 api = Proxy
 
 app :: Config -> Application
-app config = serve api $ enter (readerToEither config) fullServer
+app config = serve api $ enter (readerToEither config) allHandlers
 
-readerToEither :: Config -> AppM :~> EitherT ServantErr IO
+readerToEither :: Config -> Handler :~> EitherT ServantErr IO
 readerToEither config = Nat $ \x -> runReaderT x config
 
 makePool :: IO ConnectionPool
@@ -80,14 +48,29 @@ makePool = do
             ["host=", "dbname=", "user=", "password=", "port="] 
             [dbHost, dbName, dbUser, dbPass, dbPort] in
                 runStdoutLoggingT $ createPostgresqlPool connectionString 4
+{-
+import qualified Data.Set                 as Set
+import qualified Data.UUID                as UUID
+import qualified Data.UUID.V4             as UUID
+import           Network.Wai
+import           Servant
+import           Api.Types.Facilities
+import qualified Api.Handlers.Facilities as F
+import           Api.Types.Inventory
+import qualified Api.Handlers.Inventory as I          
+import           Util
+import Models (doMigrations)
+import Control.Monad.Logger                 (runNoLoggingT, runStdoutLoggingT)
+import Config
 
-main :: IO ()
-main = do
-    port <- lookupSetting "PORT" 3000
-    putStrLn "Starting Inventorium API server..."
-    pool <- makePool
-    let config = Config { getPool = pool }
-    runSqlPool doMigrations pool
-    putStrLn $ "Listening on port " ++ show port
-    run port $ logStdout $ app config
 
+api :: Proxy FullApi
+api = Proxy
+
+app :: Config -> Application
+app config = serve api $ enter (readerToEither config) fullServer
+
+
+
+
+-}

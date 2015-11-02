@@ -1,4 +1,4 @@
-module Api.Handlers.Facilities where
+module Handlers.Facilities (facilitiesHandlers) where
 
 import Control.Applicative ((<$>))
 import Control.Monad (when)
@@ -7,20 +7,37 @@ import Data.Maybe (isNothing)
 import Data.Map (empty, findWithDefault)
 import Data.Time.Clock (getCurrentTime)
 import Servant
-import Api.Types.Facilities
 import Data.Text (Text)
 import Data.ByteString (append)
 import Control.Monad.IO.Class (liftIO)
-import Auth
-import Errors
-import Models
-import Sort
-import Types
 import Queries.Facilities
 import Util (unimplemented, groupMap)
 import Database.Persist.Types (Entity(..), Filter, SelectOpt(..))
 import Database.Persist.Class (count, delete, get, getBy, insert, replace, selectFirst, selectList)
 import Database.Persist ((==.), (!=.), (<-.))
+
+import Handlers.Auth
+import Handlers.Errors
+import Types.Api.Facilities
+import Types.Misc
+import Types.Sort
+import Types.Model.Persistent
+import Types.Model.Building
+import Types.Model.Room
+
+-----------------------------------------------------------------------------
+
+facilitiesHandlers :: ServerT FacilitiesApi Handler
+facilitiesHandlers = getBuildingList
+                :<|> postBuildingList
+                :<|> getBuilding
+                :<|> putBuilding
+                :<|> deleteBuilding
+                :<|> getRoomList
+                :<|> postRoomList
+                :<|> getRoom
+                :<|> putRoom
+                :<|> deleteRoom
 
 -----------------------------------------------------------------------------
 

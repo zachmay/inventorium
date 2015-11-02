@@ -1,7 +1,10 @@
-module Api.Handlers.Reports where
+module Types.Api.Reports where
 
 import Servant.API
-import Types
+
+import Types.Misc
+import Types.Model.ByTypeReport
+import Types.Model.ReconciliationReport
 
 type ReportsApi =
     "api" :> "reports" :> "reconciliation"

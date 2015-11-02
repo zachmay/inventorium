@@ -1,10 +1,14 @@
-module Api.Types.Inventory where
+module Types.Api.Inventory where
 
-import Servant.API
-import Types
-import Models
 import Database.Persist (Entity, Key)
-import Data.Text (Text)
+import Servant.API
+
+import Types.Model.Building
+import Types.Model.CheckIn
+import Types.Model.Room
+import Types.Model.Item
+import Types.Model.ItemType
+import Types.Misc
 
 type InventoryApi = 
     
