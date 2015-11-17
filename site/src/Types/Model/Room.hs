@@ -22,8 +22,8 @@ instance ToText RoomId where
 instance FromText RoomId where
     fromText t = toSqlKey <$> (readMaybe . unpack $ t)
 
-data RoomDetail = RoomDetail { room :: Entity Building
-                             , inventory :: Maybe [Entity Room] }
+data RoomDetail = RoomDetail { room :: Entity Room
+                             , inventory :: Maybe [Entity Item] }
 
 instance ToJSON RoomDetail where
     toJSON (RoomDetail { room = r, inventory = is }) =

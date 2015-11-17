@@ -22,6 +22,7 @@ data AuthRequest = AuthRequest { authUserName :: Text
                                deriving (Eq, Ord, Show, Generic)
 
 instance FromJSON AuthRequest 
+instance ToJSON AuthRequest where
 
 data AuthResponse = AuthSuccess AuthToken
                   | AuthFailure AuthFailureMessage

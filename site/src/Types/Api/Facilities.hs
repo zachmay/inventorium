@@ -1,6 +1,6 @@
 module Types.Api.Facilities where
 
-import Database.Persist (Entity, Key)
+import Database.Persist (Key)
 import Servant.API
 
 import Types.Model.Building
@@ -17,7 +17,7 @@ type FacilitiesApi =
     "api" :> "buildings"
         :> Authorized
         :> ReqBody '[JSON] Building 
-        :> Post '[JSON] (Entity Building) :<|>
+        :> Post '[JSON] BuildingDetail :<|>
 
     "api" :> "buildings" :> Capture "buildingId" (Key Building)
         :> Authorized
@@ -26,7 +26,7 @@ type FacilitiesApi =
     "api" :> "buildings" :> Capture "buildingId" (Key Building)
         :> Authorized
         :> ReqBody '[JSON] Building
-        :> Put '[JSON] (Entity Building) :<|>
+        :> Put '[JSON] BuildingDetail :<|>
     "api" :> "buildings" :> Capture "buildingId" (Key Building)
         :> Authorized
         :> Delete '[JSON] () :<|>
@@ -35,20 +35,20 @@ type FacilitiesApi =
         :> Authorized
         :> QueryParams "sort" (SortField RoomSortBy)
         :> QueryParams "expand" RoomExpand
-        :> Get '[JSON] [Entity Room] :<|>
+        :> Get '[JSON] [RoomDetail] :<|>
     "api" :> "buildings" :> Capture "buildingId" (Key Building) :> "rooms"
         :> Authorized
         :> ReqBody '[JSON] Room 
-        :> Post '[JSON] (Entity Room) :<|>
+        :> Post '[JSON] RoomDetail :<|>
 
     "api" :> "buildings" :> Capture "buildingId" (Key Building) :> "rooms" :> Capture "roomId" (Key Room)
         :> Authorized
         :> QueryParams "expand" RoomExpand
-        :> Get '[JSON] (Entity Room)  :<|>
+        :> Get '[JSON] RoomDetail  :<|>
     "api" :> "buildings" :> Capture "buildingId" (Key Building) :> "rooms" :> Capture "roomId" (Key Room)
         :> Authorized
         :> ReqBody '[JSON] Room
-        :> Put '[JSON] (Entity Room)  :<|>
+        :> Put '[JSON] RoomDetail  :<|>
     "api" :> "buildings" :> Capture "buildingId" (Key Building) :> "rooms" :> Capture "roomId" (Key Room)
         :> Authorized
         :> Delete '[JSON] ()

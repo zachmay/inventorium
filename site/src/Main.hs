@@ -10,13 +10,15 @@ import Network.Wai                          (Application)
 import Network.Wai.Handler.Warp             (run)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import Servant
+import Servant.Docs
 
-import Types.Api   (InventoriumApi)
+import Types.Api   (inventoriumApi)
 import Types.App   (Config(..))
 import Types.Misc  (Handler)
 import Handlers    (allHandlers)
 import Util        (lookupEnvironment, lookupSetting)
 import Types.Model.Persistent (doMigrations)
+import Docs
 
 main :: IO ()
 main = do
@@ -28,11 +30,8 @@ main = do
     putStrLn $ "Listening on port " ++ show port
     run port $ logStdout $ app config
 
-api :: Proxy InventoriumApi
-api = Proxy
-
 app :: Config -> Application
-app config = serve api $ enter (readerToEither config) allHandlers
+app config = serve inventoriumApi $ enter (readerToEither config) allHandlers
 
 readerToEither :: Config -> Handler :~> EitherT ServantErr IO
 readerToEither config = Nat $ \x -> runReaderT x config
@@ -48,29 +47,3 @@ makePool = do
             ["host=", "dbname=", "user=", "password=", "port="] 
             [dbHost, dbName, dbUser, dbPass, dbPort] in
                 runStdoutLoggingT $ createPostgresqlPool connectionString 4
-{-
-import qualified Data.Set                 as Set
-import qualified Data.UUID                as UUID
-import qualified Data.UUID.V4             as UUID
-import           Network.Wai
-import           Servant
-import           Api.Types.Facilities
-import qualified Api.Handlers.Facilities as F
-import           Api.Types.Inventory
-import qualified Api.Handlers.Inventory as I          
-import           Util
-import Models (doMigrations)
-import Control.Monad.Logger                 (runNoLoggingT, runStdoutLoggingT)
-import Config
-
-
-api :: Proxy FullApi
-api = Proxy
-
-app :: Config -> Application
-app config = serve api $ enter (readerToEither config) fullServer
-
-
-
-
--}

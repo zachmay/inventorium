@@ -34,7 +34,7 @@ data BuildingSortBy = BuildingSortByDateCreated
                     | BuildingSortByDateUpdated
                     | BuildingSortByDescription
                     | BuildingSortByName
-                    deriving (Eq, Ord, Show)
+                    deriving (Bounded, Enum, Eq, Ord, Show)
 
 instance ToText BuildingSortBy where
     toText BuildingSortByDateCreated = "created"
@@ -52,7 +52,7 @@ instance FromText BuildingSortBy where
 {- Building 'expand' options -}
 
 data BuildingExpand = BuildingExpandRooms
-                    deriving (Eq, Ord, Show)
+                    deriving (Bounded, Enum, Eq, Ord, Show)
 
 instance ToText BuildingExpand where
     toText BuildingExpandRooms = "rooms"

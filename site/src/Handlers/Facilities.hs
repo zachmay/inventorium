@@ -72,12 +72,13 @@ getBuildingList auth sortBy expand = do
                                      else return empty
 
 -- | Handles HTTP POST for the building collection.
-postBuildingList :: Maybe AuthToken -> Building -> Handler (Entity Building)
+postBuildingList :: Maybe AuthToken -> Building -> Handler BuildingDetail
 postBuildingList auth building = do
     checkAuthToken auth
     validateBuilding Nothing building
     buildingId <- runDb $ insert building
-    return $ Entity buildingId building
+    return $ BuildingDetail { building = Entity buildingId building
+                            , rooms = Nothing }
 
 -----------------------------------------------------------------------------
 
@@ -97,7 +98,7 @@ getBuilding buildingId auth expand = do
                            else return Nothing
 
 -- | Handles HTTP PUT for individual building resources.
-putBuilding ::  BuildingId -> Maybe AuthToken -> Building -> Handler (Entity Building)
+putBuilding ::  BuildingId -> Maybe AuthToken -> Building -> Handler BuildingDetail
 putBuilding buildingId auth building = do
     checkAuthToken auth
     existing <- fetchBuildingOr404 buildingId
@@ -105,7 +106,8 @@ putBuilding buildingId auth building = do
     let building' = building { buildingUpdated = now }
     validateBuilding (Just buildingId) building'
     runDb $ replace buildingId building'
-    return $ Entity buildingId building'
+    return $ BuildingDetail { building = Entity buildingId building'
+                            , rooms = Nothing }
 
 -- | Handles HTTP DELETE for individual building resources.
 --
@@ -128,12 +130,12 @@ deleteBuilding buildingId auth = do
 
 -- | Handles HTTP GET for a building's room collection.
 -- TODO: Honor RoomExpand
-getRoomList :: BuildingId -> Maybe AuthToken -> [SortField RoomSortBy] -> [RoomExpand] -> Handler [Entity Room]
+getRoomList :: BuildingId -> Maybe AuthToken -> [SortField RoomSortBy] -> [RoomExpand] -> Handler [RoomDetail]
 getRoomList buildingId auth sortBy expand = do
     checkAuthToken auth 
     building <- fetchBuildingOr404 buildingId
     rooms <- runDb $ selectList [RoomBuilding ==. buildingId] (map sortByToQueryOption sortBy)
-    return rooms
+    return $ map toRoomDetail rooms
     where sortByToQueryOption (SortField Ascending  RoomSortByDateCreated) = Asc  RoomCreated
           sortByToQueryOption (SortField Ascending  RoomSortByDateUpdated) = Asc  RoomUpdated
           sortByToQueryOption (SortField Ascending  RoomSortByDescription) = Asc  RoomDescription
@@ -142,33 +144,38 @@ getRoomList buildingId auth sortBy expand = do
           sortByToQueryOption (SortField Descending RoomSortByDateUpdated) = Desc RoomUpdated
           sortByToQueryOption (SortField Descending RoomSortByDescription) = Desc RoomDescription
           sortByToQueryOption (SortField Descending RoomSortByName)        = Desc RoomName
+          toRoomDetail r = RoomDetail { room = r
+                                      , inventory = Nothing }
 
 -- | Handles HTTP POST for a building's room collection.
-postRoomList :: BuildingId -> Maybe AuthToken -> Room -> Handler (Entity Room)
+postRoomList :: BuildingId -> Maybe AuthToken -> Room -> Handler RoomDetail
 postRoomList buildingId auth room = do
     let name = roomName room
     checkAuthToken auth
     validateRoom buildingId Nothing room
     roomId <- runDb $ insert room
-    return $ Entity roomId room
+    return $ RoomDetail { room = Entity roomId room
+                        , inventory = Nothing }
 
 -- | Room resources
 
 -- | Handles HTTP GET for individual room resources.
 -- TODO: Honor RoomExpand
-getRoom :: BuildingId -> RoomId -> Maybe AuthToken -> [RoomExpand] -> Handler (Entity Room)
+getRoom :: BuildingId -> RoomId -> Maybe AuthToken -> [RoomExpand] -> Handler RoomDetail
 getRoom buildingId roomId auth expand = do
     checkAuthToken auth
     (building, room) <- fetchBuildingRoomOr404 buildingId roomId
-    return $ Entity roomId room
+    return $ RoomDetail { room = Entity roomId room
+                        , inventory = Nothing }
 
 -- | Handles HTTP PUT for individual room resources.
-putRoom :: BuildingId -> RoomId -> Maybe AuthToken -> Room -> Handler (Entity Room)
+putRoom :: BuildingId -> RoomId -> Maybe AuthToken -> Room -> Handler RoomDetail
 putRoom buildingId roomId auth room = do
     checkAuthToken auth
     validateRoom buildingId (Just roomId) room
     runDb $ replace roomId room
-    return $ Entity roomId room
+    return $ RoomDetail { room = Entity roomId room
+                        , inventory = Nothing }
 
 -- | Handles HTTP DELETE for individual room resources.
 -- TODO: Validation - Disallow if room contains inventory

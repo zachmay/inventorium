@@ -1,6 +1,6 @@
 module Types.Api.Inventory where
 
-import Database.Persist (Entity, Key)
+import Database.Persist (Key)
 import Servant.API
 
 import Types.Model.Building
@@ -9,6 +9,7 @@ import Types.Model.Room
 import Types.Model.Item
 import Types.Model.ItemType
 import Types.Misc
+import Types.Sort (SortField)
 
 type InventoryApi = 
     
@@ -21,14 +22,14 @@ type InventoryApi =
     "api" :> "item-types"
         :> Authorized
         :> ReqBody '[JSON] ItemType 
-        :> Post '[JSON] (Entity ItemType) :<|>
+        :> Post '[JSON] ItemTypeDetail :<|>
     "api" :> "item-types" :> Capture "typeId" ItemTypeId
         :> Authorized
-        :> Get '[JSON] (Entity ItemType) :<|>
+        :> Get '[JSON] ItemTypeDetail :<|>
     "api" :> "item-types" :> Capture "typeId" ItemTypeId
         :> Authorized
         :> ReqBody '[JSON] ItemType
-        :> Put '[JSON] (Entity ItemType) :<|>
+        :> Put '[JSON] ItemTypeDetail :<|>
     "api" :> "item-types" :> Capture "typeId" ItemTypeId
         :> Authorized
         :> Delete '[JSON] () :<|>
@@ -37,27 +38,27 @@ type InventoryApi =
 
     "api" :> "inventory"
         :> Authorized
-        :> QueryParam "sort" ItemSortBy
+        :> QueryParams "sort" (SortField ItemSortBy)
         :> QueryParams "expand" ItemExpand
-        :> Get '[JSON] [Entity Item]  :<|>
+        :> Get '[JSON] [ItemDetail]  :<|>
     "api" :> "inventory"
         :> Authorized
         :> ReqBody '[JSON] Item
-        :> Post '[JSON] (Entity Item) :<|>
+        :> Post '[JSON] ItemDetail :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "inventory"
         :> Authorized
-        :> QueryParam "sort" ItemSortBy
+        :> QueryParams "sort" (SortField ItemSortBy)
         :> QueryParams "expand" ItemExpand
-        :> Get '[JSON] [Entity Item] :<|>
+        :> Get '[JSON] [ItemDetail] :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId :> "inventory"
         :> Authorized
-        :> QueryParam "sort" ItemSortBy
+        :> QueryParams "sort" (SortField ItemSortBy)
         :> QueryParams "expand" ItemExpand
-        :> Get '[JSON] [Entity Item] :<|>
+        :> Get '[JSON] [ItemDetail] :<|>
     "api" :> "buildings" :> Capture "buildingId" BuildingId :> "rooms" :> Capture "roomId" RoomId :> "inventory"
         :> Authorized
         :> ReqBody '[JSON] Item
-        :> Post '[JSON] (Entity Item) :<|>
+        :> Post '[JSON] ItemDetail :<|>
 
     {- Item resources -}
 
@@ -68,7 +69,7 @@ type InventoryApi =
     "api" :> "inventory" :> Capture "itemId" ItemId
         :> Authorized
         :> ReqBody '[JSON] Item
-        :> Put '[JSON] (Entity Item) :<|>
+        :> Put '[JSON] ItemDetail :<|>
     "api" :> "inventory" :> Capture "itemId" ItemId
         :> Authorized
         :> Delete '[JSON] () :<|>
@@ -77,21 +78,21 @@ type InventoryApi =
 
     "api" :> "inventory" :> Capture "itemId" ItemId :> "history"
         :> Authorized
-        :> QueryParam "sort" CheckInSortBy
+        :> QueryParams "sort" (SortField CheckInSortBy)
         :> QueryParams "expand" CheckInExpand
-        :> Get '[JSON] [Entity CheckIn] :<|>
+        :> Get '[JSON] [CheckInDetail] :<|>
     "api" :> "inventory" :> Capture "itemId" ItemId :> "history"
         :> Authorized
         :> ReqBody '[JSON] CheckIn
-        :> Post '[JSON] (Entity CheckIn) :<|>
+        :> Post '[JSON] CheckInDetail :<|>
 
     {- Item check-in resources -}
 
     "api" :> "inventory" :> Capture "itemId" ItemId :> "history" :> "latest"
         :> Authorized
         :> QueryParams "expand" CheckInExpand
-        :> Get '[JSON] (Entity CheckIn) :<|>
+        :> Get '[JSON] CheckInDetail :<|>
     "api" :> "inventory" :> Capture "itemId" ItemId :> "history" :> Capture "checkinId" CheckInId
         :> Authorized
         :> QueryParams "expand" CheckInExpand
-        :> Get '[JSON] (Entity CheckIn)
+        :> Get '[JSON] CheckInDetail

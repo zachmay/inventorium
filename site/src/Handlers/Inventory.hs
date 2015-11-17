@@ -9,7 +9,7 @@ import Data.ByteString (append)
 import Data.Time.Clock (getCurrentTime)
 import Control.Monad.IO.Class (liftIO)
 import Queries.Inventory
-import Database.Persist.Types (Entity(..), Filter, SelectOpt)
+import Database.Persist.Types (Filter, SelectOpt, Entity(..))
 import Database.Persist.Class (count, delete, get, getBy, insert, replace, selectFirst, selectList)
 import Database.Persist ((==.), (!=.))
 
@@ -21,6 +21,7 @@ import Types.Model.Persistent
 import Types.Model.CheckIn
 import Types.Model.Item
 import Types.Model.ItemType
+import Types.Sort (SortField)
 import Util
 
 -----------------------------------------------------------------------------
@@ -62,29 +63,32 @@ getItemTypeList auth expand = do
         
 
 -- | Handles HTTP POST for the item type collection.
-postItemTypeList :: Maybe AuthToken -> ItemType -> Handler (Entity ItemType)
+postItemTypeList :: Maybe AuthToken -> ItemType -> Handler ItemTypeDetail
 postItemTypeList auth itemType = do
     checkAuthToken auth 
     validateItemType Nothing itemType
     itemTypeId <- runDb $ insert itemType
-    return $ Entity itemTypeId itemType
+    return $ ItemTypeDetail { itemType = Entity itemTypeId itemType
+                            , properties = Nothing }
 
 -- | Handles HTTP GET for individual item type resources.
 -- TODO: Get list of fields for this item type
-getItemType :: ItemTypeId -> Maybe AuthToken -> Handler (Entity ItemType)
+getItemType :: ItemTypeId -> Maybe AuthToken -> Handler ItemTypeDetail
 getItemType itemTypeId auth = do
     checkAuthToken auth
     itemType <- fetchItemTypeOr404 itemTypeId
-    return $ Entity itemTypeId itemType
+    return $ ItemTypeDetail { itemType = Entity itemTypeId itemType
+                            , properties = Nothing }
 
 -- | Handles HTTP PUT for individual item type resources.
-putItemType :: ItemTypeId -> Maybe AuthToken -> ItemType -> Handler (Entity ItemType)
+putItemType :: ItemTypeId -> Maybe AuthToken -> ItemType -> Handler ItemTypeDetail
 putItemType itemTypeId auth itemType = do
     checkAuthToken auth
     fetchItemTypeOr404 itemTypeId
     validateItemType (Just itemTypeId) itemType
     runDb $ replace itemTypeId itemType
-    return $ Entity itemTypeId itemType
+    return $ ItemTypeDetail { itemType = Entity itemTypeId itemType
+                            , properties = Nothing }
 
 -- | Handles HTTP DELETE for individual item type resources.
 deleteItemType :: ItemTypeId -> Maybe AuthToken -> Handler ()
@@ -99,28 +103,30 @@ deleteItemType itemTypeId auth = do
 -- | Handles HTTP GET for the master inventory list collection.
 -- TODO: Honor ItemSortBy
 -- TODO: Honor ItemExpand
-getMasterInventory :: Maybe AuthToken -> Maybe ItemSortBy -> [ItemExpand] -> Handler [Entity Item]
+getMasterInventory :: Maybe AuthToken -> [SortField ItemSortBy] -> [ItemExpand] -> Handler [ItemDetail]
 getMasterInventory auth sort expand = do
-    runDb $ selectList [] []
+    items <- runDb $ selectList [] []
+    return $ map (\it -> ItemDetail { item = it, currentCheckIn = Nothing }) items
 
 -- | Handles HTTP POST for the master inventory list collection.
-postMasterInventory :: Maybe AuthToken -> Item -> Handler (Entity Item)
+postMasterInventory :: Maybe AuthToken -> Item -> Handler ItemDetail
 postMasterInventory auth item = do
     checkAuthToken auth
     validateItem item
     itemId <- runDb $ insert item
-    return $ Entity itemId item
+    return $ ItemDetail { item = Entity itemId item
+                        , currentCheckIn = Nothing }
 
 -- Handles HTTP GET for a building's inventory collection.
-getBuildingInventory :: BuildingId -> Maybe AuthToken -> Maybe ItemSortBy -> [ItemExpand] -> Handler [Entity Item]
+getBuildingInventory :: BuildingId -> Maybe AuthToken -> [SortField ItemSortBy] -> [ItemExpand] -> Handler [ItemDetail]
 getBuildingInventory bid auth sort expand = failNotImplemented
 
 -- | Handles HTTP GET for a room's inventory collection.
-getRoomInventory :: BuildingId -> RoomId -> Maybe AuthToken -> Maybe ItemSortBy -> [ItemExpand] -> Handler [Entity Item]
+getRoomInventory :: BuildingId -> RoomId -> Maybe AuthToken -> [SortField ItemSortBy] -> [ItemExpand] -> Handler [ItemDetail]
 getRoomInventory bid rid auth sort expand = failNotImplemented
 
 -- | Handles HTTP POST for a room's inventory collection.
-postRoomInventory :: BuildingId -> RoomId -> Maybe AuthToken -> Item -> Handler (Entity Item)
+postRoomInventory :: BuildingId -> RoomId -> Maybe AuthToken -> Item -> Handler ItemDetail
 postRoomInventory bid rid auth item = failNotImplemented
 
 {- Individual item resources -}
@@ -137,7 +143,7 @@ getItem iid auth expand = do
         []                     -> fail404 "Item not found."
         -}
 
-putItem :: ItemId -> Maybe AuthToken -> Item -> Handler (Entity Item)
+putItem :: ItemId -> Maybe AuthToken -> Item -> Handler ItemDetail
 putItem itemId auth item = do
     checkAuthToken auth
     existingItem <- fetchItemOr404 itemId
@@ -145,25 +151,26 @@ putItem itemId auth item = do
     now <- liftIO $ getCurrentTime
     let item' = item { itemUpdated = now }
     runDb $ replace itemId item'
-    return $ Entity itemId item'
+    return $ ItemDetail { item = Entity itemId item'
+                        , currentCheckIn = Nothing }
 
 deleteItem :: ItemId -> Maybe AuthToken -> Handler ()
 deleteItem iid auth = failNotImplemented
 
 {- Item check-in history collection -}
 
-getItemHistory :: ItemId -> Maybe AuthToken -> Maybe CheckInSortBy -> [CheckInExpand] -> Handler [Entity CheckIn]
+getItemHistory :: ItemId -> Maybe AuthToken -> [SortField CheckInSortBy] -> [CheckInExpand] -> Handler [CheckInDetail]
 getItemHistory iid auth sort expand = failNotImplemented
 
-postItemHistory :: ItemId -> Maybe AuthToken -> CheckIn -> Handler (Entity CheckIn)
+postItemHistory :: ItemId -> Maybe AuthToken -> CheckIn -> Handler CheckInDetail
 postItemHistory iid auth checkin = failNotImplemented
 
 {- Item check-in resources -}
 
-getItemLatestCheckIn :: ItemId -> Maybe AuthToken -> [CheckInExpand] -> Handler (Entity CheckIn)
+getItemLatestCheckIn :: ItemId -> Maybe AuthToken -> [CheckInExpand] -> Handler CheckInDetail
 getItemLatestCheckIn iid auth expand = failNotImplemented
 
-getItemCheckIn :: ItemId -> CheckInId -> Maybe AuthToken -> [CheckInExpand] -> Handler (Entity CheckIn)
+getItemCheckIn :: ItemId -> CheckInId -> Maybe AuthToken -> [CheckInExpand] -> Handler CheckInDetail
 getItemCheckIn iid cid auth expand = failNotImplemented
 
 

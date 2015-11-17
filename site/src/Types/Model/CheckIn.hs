@@ -1,5 +1,6 @@
 module Types.Model.CheckIn (
     CheckIn(..),
+    CheckInDetail(..),
     CheckInExpand(..),
     CheckInId(..),
     CheckInSortBy(..)
