@@ -323,13 +323,61 @@ primarily for database access. In other words, our API endpoint handlers are pur
 that have configuration implicitly wired through them, can throw exceptions, and return instructions
 for how the Haskell runtime should perform I/O in order to build up a value of type `BuildingDetail`.
 
-TODO: MORE
+We will cover more specific details about the implementation below, but it is worth reflecting
+on how Servant worked in practice. There are many web frameworks available, like Ruby on Rails, Django
+for Python, and Laravel for PHP. One important criteria for judging this frameworks is their ability
+to abstract the common details of the HTTP request/response lifecycle. Servant does this as well as,
+and perhaps better than, any framework I have worked with. Consider this workflow:
 
-- Servant
-    - Expresses core REST concepts directly as types
-    - Types drive compile-time safety in implementation
-    - Same types also drive adjunts: documentation generation, client generation
-    - Marshalling between native datatypes and JSON is easy
+- The request URL is parsed and mapped to an appropriate handler based on the request method (`GET`, 
+  `POST`, etc.)
+- HTTP headers are parsed and, where applicable, marshalled into native data types:
+    - The request `Content-Type` header is checked to ensure that the body of the request is in
+      a format that our application is willing to accept
+    - The `Accept` header is checked to ensure that the client will accept a response in a format
+      our application is willing to deliver
+- URL path fragments (such as the ID of a building) and query string parameters are parsed and
+  marshalled into native data types
+- The relevant path fragments, query string parameters, and headers are passed to the handler.
+- If successful, the return value of the handler is marshalled into an appropriate encoding 
+  based on the request's `Accept` header.
+
+There are two important themes here. The first is that in all cases, our application logic ought deals
+with semantically meaningful domain values rather than simply strings or associative arrays (probably
+full of strings themselves!) and our framework should abstract the details of marshalling raw strings
+from the request into our domain data types and from our domain data types into raw strings in the
+response.
+
+The second is that the framework should abstract the details of handling as many common HTTP error
+cases as possible. If we can declaratively define the content types our application is willing
+to accept, the framework should use that information to return `415 Unsupported Media Type` without
+our application code's direct intervention if the client gives us a content type we do not support
+of return `400 Bad Request` if the request body cannot be parsed into a suitable value.  Of course,
+there will always be error cases that only our application can know about. If a request is made for
+a record that is not in the database, we should not expect the framework to know to return `404 Not Found`,
+but we should expect it to return that error response if the request URL does not map to any known handler.
+
+Servant is quite successful in these two regards, and I would argue that the Haskell language
+contributes to that succes. It does not surprise me to see a pervasive focus
+on using meaningful domain data types in a strongly-typed language like Haskell, but Servant leverages
+Haskell's features to good effect, using typeclasses to automate marshalling to and from
+domain data types. For example, if you have a data type that implements the `ToJSON` and `FromJSON`
+type classes, that data type can be accepted in the body for requests with the
+`Content-Type: application/json` header and returned in the response for requests with the
+`Accept: application/json` header.
+
+Similarly, any language could support a framework that offers a declarative way to define acceptable
+content types, required headers, and so on, but Servant's radical approach of using Haskell's type
+system to make that declarative specification not just a source of runtime information but a
+binding, compile-time contract for handler functions is extraordinarily powerful. Servant also
+supports using that same type-level declarative specification to drive tools that generate 
+API documentation and client code for other languages like JavaScript.
+
+While working with Servant, I did come across a few odd corner cases, mostly involving unexpected response
+codes in certain error cases. It is possible Servant understands the HTTP specification better than I do,
+but Servant is a relatively immature library. However, despite some shortcomings, what Servant offers is
+a library that takes the classic software engineering mantra, "Don't Repeat Yourself", stretches it
+to its limits, and lets the compiler enforce it all. I was very impressed.
 
 **Persistent and Esqueleto**
 
