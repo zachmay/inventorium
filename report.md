@@ -77,6 +77,8 @@ issues where, for example, an installed dependency for your database server is i
 your the API server. The containers can still communicate over the network by explicitly mapping
 network ports within the containers.
 
+![Inventorium Architecture](architecture-diagram.png)
+
 Inventorium, then, requires a container for the static web server, which was configured to
 forward API requests to the container that runs the API server. Similarly, the API server's container
 communicates with the database server. Although this was not implemented, there is very good
@@ -896,6 +898,8 @@ options. As we can see, that corresponds to the three parameters of our handler 
 type is perhaps unusual though: rather than return a `BuildingDetail` value, the return type is
 `Handler BuildingDetail`.
 
+![The `Handler` Monad Stack](monad-stack.png)
+
 This is because our handler functions are *monadic*. We will not address monads here, but our
 handlers actually return computations that execute in a particular context and yield the appropriate
 values. The definition of the `Handler` type is:
@@ -956,9 +960,79 @@ whatever encodings are needed and builds up the HTTP response to return to the c
 
 **Wiring Things Together**
 
-With all these details in place, wiring our application together is not all that complicated.
+With all these details in place, wiring our application together is not all that complicated. The API
+server executable starts up when the API server container is brought online. Its entry point is the
+`main` function in `src/site/Main.hs`.
 
-TODO
+```
+main :: IO ()
+main = do
+    port <- lookupSetting "PORT" 3000
+    putStrLn "Starting Inventorium API server..."
+    pool <- makePool
+    let config = Config { getPool = pool }
+    runSqlPool doMigrations pool
+    putStrLn $ "Listening on port " ++ show port
+    run port $ logStdout $ app config
+```
+
+In Haskell, the `main` function always has type `IO ()`: intuitively, `main` is a pure function that lazily returns a computation
+that will result in the value `()`, the "unit" value we have seen before. Our program actually gets executed when the Haskell
+run-time forces the full evaluation of that lazy value.
+
+First, we need to know what port to listen to for API requests. In our application's architecture, API requests are forwarded
+from the HTTP server to the API server on a port defined in `docker-compose.yml`. This port number is assigned to an
+environment variable in the API server container. We use `lookupSetting` to retrieve this value:
+
+```
+
+lookupSetting :: (Read a) => String -> a -> IO a
+lookupSetting env def = do
+    p <- lookupEnv env
+    return $ case p of Nothing -> def
+                       Just a  -> read a
+```
+
+This `IO` action takes an environment variable name and a default value of type `a`. The type `a` must implement the typeclass
+`Read` so that we can convert any possible `String` value we retrieve into the native Haskell type `a`. We use `lookupEnv` 
+to look up the value of the variable `env` in the current environment, yielding a `Maybe String`. If the environment variable
+was not defined, we get `Nothing` and yield the default value. If we find a value, we parse that string into a native value
+using the `read` function provided by the `Read` typeclass and yield the result.
+
+Now we need to configure our database connection pool. Rather than repeatedly opening and closing database connections, we
+instead create a pool of them. When a handler needs to communicate with the database, it requests a free connection and releases
+that connection when it is finished. The `makePool` function creates our connection pool:
+
+```
+makePool :: IO ConnectionPool
+makePool = do
+    dbUser <- lookupEnvironment "DBUSER" "postgres"
+    dbName <- lookupEnvironment "DBNAME" "postgres"
+    dbPass <- lookupEnvironment "DBPASS" "postgres"
+    dbHost <- lookupEnvironment "DBHOST" "database"
+    dbPort <- lookupEnvironment "DBPORT" "5432"
+    let connectionString = pack $ intercalate " " $ zipWith (++)
+            ["host=", "dbname=", "user=", "password=", "port="] 
+            [dbHost, dbName, dbUser, dbPass, dbPort] in
+                runStdoutLoggingT $ createPostgresqlPool connectionString 4
+```
+
+We use `lookupEnvironment` to retrieve the database connection details. It works like `lookupEnv` but takes a default
+value to return if the environment variable is not defined. We use those details to create a PostgreSQL connection
+string and use the PostgreSQL library's `createPostgresqlPool` to create a pool of 4 connections.
+
+With our connection pool created, we create a `Config` value. Our application's `Config` type is just a record
+that stores a reference to our connection pool. We also pass that connection pool to `doMigrations`, which will
+automatically update the PostgreSQL schema on the database server based on the Persistent schema defined when
+we compiled the executable.
+
+Finally, we use the function `run` to start up our application server. This function is provided by the Warp library,
+which offers a high performance, event-driven implementation of low-level HTTP server needs like network access, request
+parsing, and so on. We simply pass in our own request handling code.
+
+The value `app` wraps our Servant API handlers into a value that Warp can interact with and we inject our read-only
+configuration value so that our handlers have access to the database connection pool.  Additionally, we pass this into
+`logStdout` to direct any application logging to standard output.
 
 ## Testing
 
