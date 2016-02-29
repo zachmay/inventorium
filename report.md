@@ -5,12 +5,12 @@
 During the Spring 2015 semester, Dr. Hayes introduced our software engineering class
 to XXXX and XXXX, who are involved with managing technology for Powell County Schools.
 In an experiment in software team management, the class organized into subgroups to design
-and implement a single software package to aid in tracking the significant inventory of
+and implement a single software package for tracking the significant inventory of
 desktop computers, laptops, tablets, and other pieces of technology that XXXX and XXXX
 were tasked with managing.
 
 For various reasons, the project was unsuccessful. However, being from Eastern Kentucky myself,
-I was interested in contributing to the project and seeing something really useful delivered
+I was interested in completing the project and seeing something really useful delivered
 to the end users in Powell County.
 
 During our software engineering course, my subgroup was primarily responsible for the design of
@@ -21,18 +21,21 @@ was a typical three-tiered architecture:
 - a web API,
 - a relational database.
 
+![Inventorium's Three-Tiered Architecture](architecture.png)
+
 We made specific technical decisions based on the realities of the large team. Our primary
-criterion was finding technologies with which our team members had prior experience, but
-secondarily, we needed technologies that were accessible in both paradigm, documentation,
+criterion was finding technologies with which our team members had prior experience. 
+Secondarily, we needed technologies that were accessible in both paradigm, documentation,
 and availability of learning resources.
 
-For these reasons, we chose to implement the web API in PHP, a widely-available dynamic
+With these criteria in mind, we chose to implement the web API in PHP, a widely-available dynamic
 programming language well-suited for web development. We knew a basic RDBMS would be 
 the best choice for the database layer and chose MySQL for its ease of setup. Finally,
 we chose a combination of Twitter Bootstrap and Backbone.js to implement the browser-based
-client. Twitter Bootstrap is styling and behavioral library, which let the UI team focus
-on the UI despite relatively shallow web design skills. Among the many JavaScript frameworks,
-Backbone.js was the one the other front-end subteam felt most comfortable with.
+client. Twitter Bootstrap is a CSS styling library, which let the front-end team focus
+on the user interface organization despite relatively shallow web design skills.
+Among the many JavaScript frameworks, Backbone.js was chosen because it was the one the front-end
+felt most comfortable with.
 
 Perhaps the most successful technical choice in the initial design was the use of two software
 systems, Vagrant and Ansible, to provide consistent, reproducible virtual development environments
@@ -43,7 +46,7 @@ be reproduced consistently by individual team members with just a few commands.
 
 These technologies were, for the most part, ones that I was very comfortable with. In my
 day-to-day work doing web application development, the so-called LAMP stack (Linux, the
-Apache web server, MySQL, and PHP) is very common. This was useful, since I would be able
+Apache web server, MySQL, and PHP) is very common. This experience was useful, since I would be able
 to answer any questions that came up in the process.
 
 However, that same work experience has taught me that many aspects of this technology stack
@@ -53,57 +56,58 @@ expediencies required by a time-constrained, large-group project.
 
 ## Architecture
 
-As I said, the notion of using virtual machines for development was really the most successful
+The approach of using virtual machines for development was really the most successful
 part of the original project. With surprisingly few issues, around 20 students were able to
 start contributing code to the project despite different operating system configurations and
 and experience with the technology stack.
 
 However, the environment we used has a potentially serious drawback. It consisted of a single
-VM that contained both the web server, responsible for serving both the web API and static
-files (HTML, JavaScript, CSS, and images) for the client, and the database server.
+VM that contained both the database server and the web server, responsible for serving both
+the web API and static files (HTML, JavaScript, CSS, and images) for the client.
 In a production scenario, this would clearly be problematic for scalability.
 
 Ideally, the API server, the static web server, and the database server should all be separate. This
 offers more flexibility: as usage increases, multiple API servers could be run behind a load balancing
-mechanism or multiple database servers could be spun up to handle queries, via replication.
-Of course, if managing a single reproducible development environment is a challenge, managing several
-independent environments certainly requires an automated, reproducible solution.
+mechanism or multiple database servers could be provisioned to handle queries, via replication.
+Of course, if managing a single-machine architecture benefitted from automation, orchestrating
+a multi-tiered architecture practically necessitates it.
 
 I chose to solve this problem using a technology called Docker. Docker is a so-called
 "containerization" platform. Essentially, individual services (an API server, a database, etc.)
-can be packaged as containers: lightweight, bare-bones VMs that can (but are not required to)
+can be packaged as containers: lightweight, bare-bones VMs that can, but are not required to,
 run on the same host machine. Containerized services are completely isolated, eliminating
-issues where, for example, an installed dependency for your database server is incompatible with
-your the API server. The containers can still communicate over the network by explicitly mapping
+issues where, for example, an installed dependency for the database server is incompatible with
+the API server. The containers can still communicate over the network by explicitly mapping
 network ports within the containers.
 
-![Inventorium Architecture](architecture-diagram.png)
+![Project Architecture: Three Docker containers running independently on a single host machine](architecture-diagram.png)
 
-Inventorium, then, requires a container for the static web server, which was configured to
-forward API requests to the container that runs the API server. Similarly, the API server's container
-communicates with the database server. Although this was not implemented, there is very good
+The three primary components of the Inventorium platform are a web server, an API server, and a
+database server, each running in their own containers. The web server is configured to
+forward API requests to the API server. Similarly, the API server communicates with the database
+server for persistence. Although this was not implemented, there is good
 support for deploying containers to cloud platforms like Amazon Web Services. This is an advantage,
 because it would allow Powell County Schools to make use of Inventorium cheaply, without needing
-a dedicated server, and avoiding potential issues with deploying to some shared server in the
+to manage a dedicated server, and avoiding potential issues with deploying to a shared server in the
 school district's IT office.
 
 The web server container runs the Nginx web server. The original implementation used the Apache
-web server for simplicity. Apache uses OS-level threads to handle each web request, which
-introduces quite a bit of overhead for each request. This is less important when each request
-requires a great deal of CPU time (e.g., when responding to a complex API request), but when
-handling many relatively simple requests (for static files or simply proxying requests to an
-API server), Nginx's single-threaded, event loop-based architecture is offers higher throughput and
-better responsiveness in this use case.
+web server for simplicity. Apache uses OS-level threads to handle each web request. This approach
+introduces significant overhead for each request. This is less important when requests
+require a great CPU or I/O utilization (e.g., when responding to a complex API request), but when
+handling many simple requests (e.g., for static files or simply proxying requests to an
+API server), Nginx's single-threaded, event loop-based architecture offers higher throughput and
+better responsiveness.
 
 I chose to carry on using a RDBMS for the project, rather than opting for a NoSQL solution
 such as a document-based database like MongoDB. Ultimately, I chose to use PostgreSQL rather
-than MySQL. While MySQL is an extremely common choice for small to medium sized web applications, but
+than MySQL. MySQL is an extremely common choice for small to medium sized web applications, but
 although it has made improvements in the past few years in terms of standards compliance, transactional
-safety, and data integrity, PostgreSQL is still regarded as better in these areas. One potential area
+safety, and data integrity, PostgreSQL is still regarded as better in these areas.
 
-The final choice, and certainly the focus of both my development effort and the technical
+The final choice, and the focus of both my development effort and the technical
 discussion here, regards the implementation of the API server. I chose to use Haskell, a strong-
-and statically-typed pure functional language that compiles to native code. Haskell's
+and statically-typed pure functional programming language that compiles to native code. Haskell's
 pedigree is decidedly academic and it is often derided as being overly theoretical,
 but as I will discuss below, it has a number of features that make it appealing for what
 is often called "line of business" software and not just writing compilers or experimenting
@@ -113,15 +117,21 @@ with type systems and programming language theory.
 
 Generally, the purpose a web API is to expose the operations of the business domain over HTTP.
 We use an architecture called Representational State Transfer (REST) to accomplish this. Described by
-Roy T. Fielding in his 2000 PhD dissertation, REST is an architectural style that emphasizes building
-around the fundamentals of the web: HTTP and hypermedia (i.e., navigable links between entities).
+Roy T. Fielding in his 2000 PhD dissertation [XXXX], REST is an architectural style that emphasizes
+building around the fundamental concepts of the web: HTTP and hypermedia (i.e., navigable links between
+entities).
 
 In a RESTful architecture, domain objects (and collections or other aggregates of those objects) are
 *entities* (in the HTTP sense), i.e., resources addressed by URLs. They may be available in many
 representations: an image resource might be available in a JPEG representation or PNG. HTTP's methods
 (verbs like `GET` and `POST`) describe the operations available. A `GET` request is a request for a
-representation of a resource, i.e., a read operation.  A `POST` request takes a representation of an
+representation of a resource, i.e., a read operation.  A `PUT` request takes a representation of an
 entity and requests that the application store it, i.e., a create request.
+
+
+![Retrieving a domain object, as an HTTP GET request](rest-get.png)
+
+![Creating a domain object, as an HTTP PUT request](rest-put.png)
 
 Other aspects of the API are all handled through the well-defined channels of HTTP. Options and
 parameters can be specified using URL query string parameters and/or HTTP headers. Similarly,
@@ -130,24 +140,26 @@ the result should be the well-known 404 response. If the entity exists but the u
 an representation the server does not know how to provide, the API should instead respond with
 HTTP's "406 Not Acceptable" error code.
 
-REST can be a restrictive architecture, but its principle of offering a "uniform interface" to APIs
-is powerful. For example, HTTP defines `GET` requests to be *idempotent* operation, meaning that
+![An application error, handled by standard HTTP error codes](rest-error.png)
+
+REST can be a restrictive architecture, but its principle of offering a uniform interface to APIs
+is powerful. For example, HTTP defines `GET` requests to be an  *idempotent* operation, meaning that
 a `GET` request should not change the state of an entity on the server. Thus, if an application
 properly implements the REST architecture, you get caching of `GET` requests for free via standard
 HTTP caching mechanisms.
 
 The inventory management domain fits naturally within the REST scheme. The system tracks facility
 information (buildings and the rooms within them), inventory items and their properties (e.g., a laptop's
-CPU, memory, and hard drive specs), and "check-in" records that indicate a given inventory
+CPU, memory, and hard drive specs), and "check-in" records that indicate an inventory
 item was logged as being present in a given room at a given date and time.
 
 The API organizes this domain with a system of hierarchical URLs. For example, facility 
 information is organized into four entities addressed by different URLs:
 
-a. `/api/buildings`: the collection of building entities
-b. `/api/building/:buildingID`: an individual building entity with the given ID
-c. `/api/building/:buildingID/rooms`: the collection of rooms in a given building
-d. `/api/building/:buildingID/rooms/:roomID`: an individual room entity
+a. `/api/buildings` — the collection of building entities
+b. `/api/building/:buildingID` — an individual building entity with the given ID
+c. `/api/building/:buildingID/rooms` — the collection of rooms in a given building
+d. `/api/building/:buildingID/rooms/:roomID` — an individual room entity
 
 URLs (b) and (d) address individual entities. HTTP `GET` requests retrieve a representation
 of that single entity, while HTTP `PUT` updates it (with the new details included in the
@@ -156,13 +168,15 @@ rules).
 
 URLs (a) and (c) address *collections* of entities. HTTP `GET` retrieves a representation
 of the entire collection and `POST` creates a new entity within the collection (with the details
-of the new entity in the request body). HTTP `DELETE` is not supported.
+of the new entity in the request body), while HTTP `PUT` and `DELETE` are not supported.
 
 ## Implementation
 
+### A Short Introduction to Haskell
+
 Before we discuss the specific details of the web API's implementation, I will present 
 a short example that illustrates a few of Haskell's features. The following code sample
-implements uses parametric polymorphism to implement a homogeneous linked list and a
+uses parametric polymorphism to implement a homogeneous linked list and a
 function over that data type.
 
 ```
@@ -174,6 +188,8 @@ length Nil              = 0
 length (Cons head tail) = 1 + length tail
 ```
 
+![The linked list `(1, 2)`](linked-list.png)
+
 We define a data type `List` that takes a single type parameter `a`.  This is a homogeneous
 list, and every element will be of that type `a`. `List` is a recursive, algebraic data type,
 since it is the *sum* of two cases: a `List` is either a `Cons` cell (to use the Lisp terminology)
@@ -183,8 +199,8 @@ and, recursively, `List a`.
 
 The `deriving` keyword instructs the Haskell compiler to generate an
 implementation for the `Eq` typeclass. Typeclasses are analogous to Java interfaces and
-a datatype must implement `Eq`'s interface to be usable with the `==` equality operator.
-With this automatic derivation, lists containing any data type that implements `Eq`
+a datatype must implement `Eq`'s interface to be comparable via the `==` operator.
+With this automatic derivation, lists containing any data type (that itself implements `Eq`)
 can be compared for equality.
 
 Finally we define a function `length` on `List`. We use a feature called *pattern matching*
@@ -193,65 +209,68 @@ is zero (an empty list has length zero). Otherwise, we have a `Cons` cell with a
 element and a `tail` list and the length is one plus the length of `tail`.
 
 This small example demonstrates a number of Haskell language features that have
-important practical implications. Algebraic data types are more expressive than
+important practical implications. Algebraic data types are more expressive than simple
 enumeration types and they make the pattern matching in our function definition possible.
 They also allow the compiler inform us when our pattern matches are not exhaustive, which
-often indicates a bug and to systematically generate code for the typeclass implementations
-as we saw with `Eq` above.
+often indicates a logic error. Additionally, as we saw with the automatic derivation of the
+support for the `Eq` typeclass, they enable the compiler to systematically generate code
+for us at compile time.
 
 Parametric data types (known as *generics* in some languages) are also powerful. With
 our parametric list type, we can work with `List`s of `String`s, `Integer`s, or any
 custom data type and use all the existing `List` code while still enjoy the security 
 of knowing that the compiler can tell the difference between a `List` of `Strings` and
-a list of `Integers`.
+a list of `Integers`, unlike languages with out parametric data types like Go or early
+versions of Java.
 
 Parametricity in combination with Haskell's default purity can be very powerful 
-for reasoning about your code. A function of type `a -> a`, i.e., a function
+for reasoning about code. A function of type `a -> a`, i.e., a function
 that takes a value of some type `a` and returns a value of that same type,
 can only have one implementation in a pure language: the identity function. This
 is a very trivial example, but the Haskell ecosystem is filled with libraries
 where parametricity and purity allow their maintainers to reason about the correctness
-of their code over and above simple type safety.
+of their code.
 
 Consider our definition of the `length` function. Notice that despite all of the
-discussion about the language's type system, We did not actually have to add a type
-signature! Because Haskell makes use of *type inference*, it is actually able infer
+discussion about the strength language's type system, we did not actually have to add a type
+signature. Because Haskell makes use of *type inference*, it is able infer
 that `length` has a type of `List a -> Integer` just based on the types of the patterns
 and return values used in the definitions. Anyone who has written Java code that
 looked like `HashMap<Integer, String> = new HashMap<Integer, String>()` will
 appreciate the ability to use an expression and let the compiler infer the type
-and make sure it is consistent. It is standard practice to annotate top-level
+and make sure it is consistent. While it is standard practice to annotate top-level
 functions with a type signature, both for documentation purposes and as an early
-sanity check, but in most cases they are unnecessary.
+sanity check, in most cases they are unnecessary.
 
 Finally, we should take a closer look at what are perhaps Haskell's most radical
 features: *laziness* and *purity*. Laziness, or non-strict evaluation, means that
 when evaluating an expression, subexpressions are only evaluated as needed. The C
-language uses lazy evaluation to short circuit operators like `&&` and `||`, but
-Haskell uses this evaluation strategy everywhere by default. In practical terms,
-evaluation is driven by demand. For instance, we could cleanly define an enormous
-(or even infinite) data structure like a game tree, and it will only be evaluated
-as deeply as its consumer requires.
+language uses a simple form of lazy evaluation to evaluating short circuit operators like
+`&&` and `||`. If the first operand of `&&` is evaluates to false, the second is not
+evaluated at all. However, Haskell uses this evaluation strategy everywhere by default.
+In practical terms, evaluation is driven by demand. For instance, we could cleanly
+define an enormous (or even infinite) data structure like a game tree, and it will only
+be evaluated as deeply as its consumer requires.
 
-Implementing lazy evaluation in a standard imperative program would be quite 
-tricky, if not impossible. As a result, Haskell functions are pure, meaning
+Implementing lazy evaluation by default in an typical imperative program would be
+tricky, if not impossible. To enable this, Haskell functions are pure, meaning
 they have no side effects (direct manipulation of memory, I/O, etc.) and
 always return the same result given the same parameters. This property is
-nice for reasoning about code and it actually enables the Haskell compiler
+nice for reasoning about code and it enables the Haskell compiler
 to make optimizations that would be impossible in an impure language.
 
 Of course, real software (like web API servers) needs to do things like read
-user input or talk to the network. Haskell exposes these in a rather interesting
+user input or communicate with the network. Haskell exposes these operations in an interesting
 way. Values of polymorphic type `IO a` represent instructions for the Haskell
 runtime to perform some operation that may have side effects that will yield
 a value of type `a`. 
 
 For example, `getChar` is a function of type `IO Char`. Calling `getChar` does
 not return a `Char`. Instead, `getChar` is a pure function (as all Haskell functions
-are) that returns an instruction that, when given to the runtime, will
+are) that returns an instruction that, if executed by the runtime, will
 read a character from standard input and yield it to subsequent `IO` actions.
-Primitive operations like reading a character can be sequenced together to
-create more complex operations like reading a line from an input stream. 
+Primitive operations like `getChar` can be sequenced together to
+create more complex operations like reading a line of text from an input stream. 
 
 `IO` is an example of a *monad*, a common abstraction in Haskell. A monad
 can be thought of as a computational context that supports sequenced operations.
@@ -261,27 +280,34 @@ Haskell also supports the notion of *monad transformers*, which compose multiple
 monads together into a *monad stack*. In essence, sequencing and custom monad 
 stacks allow us to define our own custom imperative sub-languages: I/O with
 read-only configuration, non-deterministic computation with short-circuit failure,
-or whatever the application needs.
+or whatever the application requires.
+
+This has been only a very cursory introduction to some of Haskell's interesting
+features. The focus of the rest of the document is on how Haskell was used in this
+project rather than the language itself. For those interested in a more in-depth
+introudction to Haskell, I have made available in the Inventorium project's GitHub repository
+a series of lecture notes on the language written for an independent study done
+during my course work.
 
 ### Libraries
 
-Three Haskell libraries were pivotal to the implementation of the web API: Servant, for
-defining and implementing RESTful APIs, plus Persistent for database access.
+Two Haskell libraries were pivotal to the implementation of the web API: Servant for
+defining and implementing RESTful APIs and Persistent for database access.
 
 **Servant**
 
-The core concept in Servant is to express a REST API as a data type. That data type forms
+The core concept of Servant is to express a REST API as a data type. That data type forms
 a specification of the API that can be used by the compiler to guarantee that the functions
 that implement the API conform to the specification. Additionally, Servant's code for
-dispatching HTTP requests uses this specification for routing those requests to the appropriate
+dispatching HTTP requests uses this specification via for routing those requests to the appropriate
 handlers, decoding request details into Haskell values, performing content type negotiation,
 validating HTTP headers, encoding resulting values into appropriate content types, and packaging
 the response, including using appropriate HTTP response codes.
 
 Servant uses some of the more advanced extensions to the Haskell langauge that have been
 implemented in the de facto standard compiler, GHC. Importantly, it uses type-level literals
-allowing strings, natural numbers, and lists to be used in type definitions. I will not
-go into the details here, but the concepts are discussed further in [1].
+allowing strings, natural numbers, and lists to be used in type definitions. Type-level
+literals are discussed in depth in [XXXX].
 
 Here is a fragment adapted from the project source code:
 
@@ -315,7 +341,7 @@ postBuilding auth building = do
 The endpoint's handler is simply a function. Its first parameter is a value of type
 `Maybe AuthToken`. `Maybe` is a sum type that represents a value that may or may not be present.
 So, if the request supplied an authorization token `"abc123"`, we would receive the value 
-`Just "abc123"`. If none was supplied, we get `Nothing`.
+`Just "abc123"`. If none was supplied, we get the value `Nothing`.
 
 The second parameter is the decoded `Building` value we got from the request's body.
 
@@ -323,11 +349,11 @@ The return value is of type `Handler BuildingDetail`. `Handler` is our applicati
 stack which supports access to read-only configuration information, exceptions, and general I/O,
 primarily for database access. In other words, our API endpoint handlers are pure functions
 that have configuration implicitly wired through them, can throw exceptions, and return instructions
-for how the Haskell runtime should perform I/O in order to build up a value of type `BuildingDetail`.
+for how the Haskell runtime should perform I/O to fulfill the request.
 
 We will cover more specific details about the implementation below, but it is worth reflecting
 on how Servant worked in practice. There are many web frameworks available, like Ruby on Rails, Django
-for Python, and Laravel for PHP. One important criteria for judging this frameworks is their ability
+for Python, and Laravel for PHP. One important criteria for judging frameworks is their ability
 to abstract the common details of the HTTP request/response lifecycle. Servant does this as well as,
 and perhaps better than, any framework I have worked with. Consider this workflow:
 
@@ -335,56 +361,59 @@ and perhaps better than, any framework I have worked with. Consider this workflo
   `POST`, etc.)
 - HTTP headers are parsed and, where applicable, marshalled into native data types:
     - The request `Content-Type` header is checked to ensure that the body of the request is in
-      a format that our application is willing to accept
+      a format that our application is able to accept
     - The `Accept` header is checked to ensure that the client will accept a response in a format
-      our application is willing to deliver
+      our application is able to deliver
 - URL path fragments (such as the ID of a building) and query string parameters are parsed and
   marshalled into native data types
 - The relevant path fragments, query string parameters, and headers are passed to the handler.
 - If successful, the return value of the handler is marshalled into an appropriate encoding 
   based on the request's `Accept` header.
 
-There are two important themes here. The first is that in all cases, our application logic ought deals
-with semantically meaningful domain values rather than simply strings or associative arrays (probably
-full of strings themselves!) and our framework should abstract the details of marshalling raw strings
+There are two important themes here. The first is that although HTTP is a fundamentally text-based
+protocol, in all cases, our application logic should deal
+with semantically meaningful domain values rather than simple strings or associative arrays.
+The framework should abstract the details of marshalling these raw strings
 from the request into our domain data types and from our domain data types into raw strings in the
 response.
 
 The second is that the framework should abstract the details of handling as many common HTTP error
-cases as possible. If we can declaratively define the content types our application is willing
+cases as possible. If we can declaratively define the content types our application is able
 to accept, the framework should use that information to return `415 Unsupported Media Type` without
-our application code's direct intervention if the client gives us a content type we do not support
-of return `400 Bad Request` if the request body cannot be parsed into a suitable value.  Of course,
-there will always be error cases that only our application can know about. If a request is made for
-a record that is not in the database, we should not expect the framework to know to return `404 Not Found`,
-but we should expect it to return that error response if the request URL does not map to any known handler.
+our application code's direct intervention if the client request's body is given in a content type
+we do not support or to return `400 Bad Request` if the request body cannot be parsed into a suitable
+value
+
+There will always be error cases that only our application can know about. If a request is made for
+a record that is not in the database, we should not expect the framework to know to return `404 Not Found`.
+However, we should expect it to return `404 Not Found` if the request URL does not map to any known
+handler.
 
 Servant is quite successful in these two regards, and I would argue that the Haskell language
 contributes to that succes. It does not surprise me to see a pervasive focus
 on using meaningful domain data types in a strongly-typed language like Haskell, but Servant leverages
 Haskell's features to good effect, using typeclasses to automate marshalling to and from
 domain data types. For example, if you have a data type that implements the `ToJSON` and `FromJSON`
-type classes, that data type can be accepted in the body for requests with the
-`Content-Type: application/json` header and returned in the response for requests with the
+type classes, that data type can be accepted in the body of requests with the
+`Content-Type: application/json` header and returned in response to requests with the
 `Accept: application/json` header.
 
 Similarly, any language could support a framework that offers a declarative way to define acceptable
-content types, required headers, and so on, but Servant's radical approach of using Haskell's type
+content types, required headers, and so on, but Servant's radical approach uses Haskell's type
 system to make that declarative specification not just a source of runtime information but a
-binding, compile-time contract for handler functions is extraordinarily powerful. Servant also
+binding, compile-time contract for handler functions. Servant also
 supports using that same type-level declarative specification to drive tools that generate 
 API documentation and client code for other languages like JavaScript.
 
 While working with Servant, I did come across a few odd corner cases, mostly involving unexpected response
 codes in certain error cases. It is possible Servant understands the HTTP specification better than I do,
-but Servant is a relatively immature library. However, despite some shortcomings, what Servant offers is
-a library that takes the classic software engineering mantra, "Don't Repeat Yourself", stretches it
-to its limits, and lets the compiler enforce it all. I was very impressed.
+but Servant is a relatively immature library and these corner cases may be actual bugs. However,
+despite some shortcomings, Servant is a very impressive web development framework.
 
 **Persistent**
 
-As we have discussed, we use PostgreSQL for our application's data storage layer. To interface with
-it, our application issues queries to the database server to retrieve records and execute inserts,
+As we have discussed, Inventorium uses PostgreSQL for our application's persistence layer. To interface
+with it, our application issues queries to the database server to retrieve records and execute inserts,
 updates, and deletes. These queries are expressed in PostgreSQL's dialect of SQL, or
 Structured Query Language. These textual queries are transmitted over the network where they are
 parsed and executed by the database server.
@@ -398,30 +427,31 @@ $query = 'select * from buildings where id = ' . $buildingID;
 ```
 
 Unfortunately, this is a very dangerous approach. First, we have no guarantee that the SQL we 
-generate will be syntactically valid and we will not find out about our mistake until runtime.
+generate will be syntactically valid and we will not find out about our mistakes until runtime.
 Additionally, we have to worry about correctly escaping the strings we concatenate together.
-Consider this example where we search for a substring in a building's `name` field:
+Consider this example where we search for buildings with a specific `name` value:
 
 ```
 $query = 'select * from buildings where name = "' . $searchTerm . '"';
 ```
 
-In addition to being somewhat difficult to read, there is a more serious problem. Suppose that
+In addition to being somewhat difficult to read, there is a more serious issue. Suppose that
 `$searchTerm` contained the string `'hello "world"'`. The resulting SQL would be:
 
 ```
 select * from buildings where name = "hello "world""
 ```
 
-This is a syntax error, which will only show up when a user enters that or a similar problematic
-string into an input field. This is even worse than just a bad user experience decision, it can 
-be abused by a malicious attacker. Suppose `$searchTerm` contained `'foo"; drop table buildings; --'`:
+This is not syntactically valid SQL, which will only show up when a user enters a problematic
+string into an input field. This is worse than just a bad user experience decision, it can 
+be abused by a malicious attacker. Suppose `$searchTerm` contained `'foo"; drop table buildings; --'`.
+The resulting SQL statement is:
 
 ```
 select * from buildings where name = "foo"; drop table buildings; --"
 ```
 
-When executed, this query will happily drop the `buildings` table. That is unlikely to be an
+When executed, this query will drop the `buildings` table from the database. That is unlikely to be an
 operation you wanted to grant to all users. This is an example of the classic SQL Injection
 vulnerability.
 
@@ -435,11 +465,11 @@ can require unwanted overhead in terms of build and deployment processes.
 
 Many languages provide database bindings that help make building dymamic SQL queries safer, but
 we are still left with the possibility that the SQL we generate will be invalid, either because
-of syntactic issues or simply because we refer incorrect tables or columns.
-We use the Persistent library in this project to help deal with our interactions with SQL.
+of syntactic issues or simply because we refer to incorrect tables or columns.
 
+We use the Persistent library in this project to help deal with our interactions with SQL.
 Persistent is a database-agnostic library that uses metaprogramming to generate a typesafe 
-interface for basic data access. However, because Persistent was designed to support both
+interface for basic database access. However, because Persistent was designed to support both
 relational database systems like PostgreSQL and document-based database systems like MongoDB,
 it does not directly support important relational features such as performing joins between
 tables.
@@ -457,11 +487,11 @@ with those tables. Our project's schema defition is found in `site/src/model`. H
 
 ```
 Room json
-    building         BuildingId
-    name             Text
-    description      Text
-    created          UTCTime default=CURRENT_TIMESTAMP
-    updated          UTCTime default=CURRENT_TIMESTAMP
+    building    BuildingId
+    name        Text
+    description Text
+    created     TCTime default=CURRENT_TIMESTAMP
+    updated     TCTime default=CURRENT_TIMESTAMP
 
     UniqueNameInBuilding name building
 
@@ -479,11 +509,11 @@ typeclasses for this record type. Additionally, the `json` notation tells Persis
 implementations for the `ToJSON` and `FromJSON` typeclasses for automatic marshalling into
 and out of JSON representations.
 
-Finally, the line `UniqueNameInBuilding` expresses a unique key constraint on this table: no two rows
+Finally, the line `UniqueNameInBuilding` defines a unique key constraint on this table: no two rows
 should have the same `name` and `building` value. In other words, no two rooms in the same building
 should have the same name. `UniqueNameInBuilding` will now be available as data constructor
-that takes two `Text` values and returns a value that can be used to uniquely retrieve a row in 
-the database. 
+that takes a `Text` value (the room name) and a `BuildingId` value and returns a value that can be
+used to uniquely retrieve a room record in the database. 
 
 We make use of this schema definition in `site/src/Types/Model/Persistent.hs`:
 
@@ -492,8 +522,8 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"]
     $(persistFileWith lowerCaseSettings "src/model")
 ```
 
-At compile time, GHC its metaprogramming engine, Template Haskell, and `persistFileWith` will
-read in our schema definition and generate corresponding Haskell code, with the specific mappings
+At compile time, the `persistFileWith` function will use GHC's metaprogramming engine, Template Haskell,
+to read in our schema definition and generate corresponding Haskell code, with the specific mappings
 between generated Haskell identifiers and database tables being governed by the `lowerCaseSettings`
 value.
 
@@ -507,9 +537,9 @@ runDb query = do
 ```
 
 Persistent's database access functions result in query values that need to be executed in a
-particular context.  In particular, we need access to connection details. Our `Handler` monad
-offers access to that configuration information, so essentially `runDb` takes a Persistent
-query that would yield a value of type `a` and transforms it into an action in our
+particular context.  In particular, we need access to database connection details. Our `Handler` monad
+offers access to those details. Essentially, then,  `runDb` takes a Persistent
+query that would yield a value of type `a` and transforms it into an action in our application's
 `Handler` monad that will get a database connection from the application's connection pool,
 use it to execute the query on the database, and yield a result of type `a`.
 
@@ -517,48 +547,53 @@ Persistent provides typesafe functions for using our the generated Haskell data 
 with our schema. For example, `get` retrieves a record by primary key. Its type is:
 
 ```
-(MonadIO m, backend ~ PersistEntityBackend val, PersistEntity val) => Key val -> SqlPersistT backend m (Maybe val)
+(MonadIO m, backend ~ PersistEntityBackend val, PersistEntity val) =>
+    Key val -> SqlPersistT backend m (Maybe val)
 ``` 
 
-This is one of the most intimidating type definitions we have seen, but it is at the core of
-Persistent's database-agnostic, typesafe approach. There are two type variables, `m`, `val`,
-and `backend`.
+This is a rather intimidating type annotation, but it is at the core of
+Persistent's typesafe, backend-agnostic approach. This type annotation describes a parametrically
+polymorphic data type with three type variables, `m`, `val`, and `backend`, along with type constraints
+that restrict what concrete data types can be used. We will describe
+the role of each of these type variables and then see how this type assembles them together.
 
 `m` is the monad stack that the query will be executed in. In particular, the constraint `MonadIO m`
 means that it needs to be a monad stack built atop the full `IO` monad. This should not be a 
-surprise, since we need to be able to interact outside the Haskell run to talk to the database server.
+surprise, since we need to be able to interact outside the Haskell runtime to communicate with the
+database server.
 
 `val` represents the data type the query should yield. If we are retrieving a `Building` record,
 `val` is unified with the type `Building`. The constraint `PersistEntity val` indicates that `val`
-is a type that implements certain under-the-hood operations that Persistent requires. These
-implementations are generated by Persistent's metaprogramming automatically, but you write them
-yourself.
+must be a type that implements certain under-the-hood operations that Persistent requires. 
+Persistent's metaprogramming generates this implementation automatically, but they could be 
+implemented by hand.
 
-Finally, `backend` is the database backend that Persistent will be working with. The constraint
-`backend ~ PersistEntityBackend val` indicates that the backend needs to be one for which
-the `val` data type has proper implementation of the `PersistEntityBackend` typeclass. This allows
-Persistent to guarantee at compile time that the data type we are retrieving is one that can
-be properly marshalled from the database into a native Haskell data type.
+Finally, `backend` is the database backend that Persistent will be working with (e.g., PostreSQL,
+MongoDB, etc.). The constraint `backend ~ PersistEntityBackend val` indicates that the backend 
+must be one for which the `val` data type has a proper implementation of the `PersistEntityBackend`
+typeclass. This allows Persistent to guarantee at compile time that the data type we are retrieving
+is one that can be properly marshalled from the specific database engine we are using into a native
+Haskell data type.
 
-Given those facts about the type variables, we can interpret the rest of the type signature.
+Given these facts about the type variables, we can interpret the rest of the type signature.
 `get` takes a value of type `Key val`, which is the data type that represents a primary key
-for a value of type `val`. If we are trying to retrieve a `Building`, we need to pass
-a `Key Building` value, which is just a synonym of `BuildingId`.
+for a value of type `val` in a `backend` database. If we are trying to retrieve a `Building`, we
+need to provide a `Key Building` value, which is just a synonym of `BuildingId`.
 
 The result is a monadic action that will yield a `Maybe val`, since the primary key may not
 exist in the database. Persistent queries execute in a monad stack that layers 
 ready-only access to details about the backend on top of a monad that supports `IO`. As we saw,
-we will use our `runDb` function to lift that monadic action into an action in our `Handler` monad,
-still yielding a `Maybe val` in this case.
+we use our `runDb` function to lift that monadic action into an action in our `Handler` monad,
+still yielding a `Maybe val`.
 
 Now we can make database queries in our handlers. Here is a function in our `Handler` monad that
-attempts to retrieve a `Building` record from a `BuildingId` that fails with an HTTP 404 error
+attempts to retrieve a `Building` record for a given `BuildingId`. It fails with an HTTP 404 error
 if no such record exists:
 
 ```
 fetchBuildingOr404 :: BuildingId -> Handler Building
 fetchBuildingOr404 buildingId = do
-    maybeBuilding <- runDb $ get buildingId
+    maybeBuilding <- runDb (get buildingId)
     case maybeBuilding of
         Nothing -> fail404 "Building not found."
         Just b  -> return b
@@ -611,7 +646,7 @@ a "Cabal file", we can use `cabal` to install all of the libraries our package d
 and compile our own code using the appropriate options.
 
 One particular set of options, `default-extensions` describes all of the language extensions
-our package will use beyond the Haskell 2010 standard [2]. These extension are required to make
+our package will use beyond the Haskell 2010 standard [XXXX]. These extension are required to make
 use of the Servant library, but they are not part of the language standard. Because these 
 extensions are only supported by the GHC compiler, the project is not portable across compilers.
 However, GHC is the de facto standard and is the only Haskell compiler that is widely used and
@@ -793,7 +828,7 @@ type AuthenticationApi =
         :> Post '[JSON] AuthResponse
 ```
 
-The official GHC documentation on type-level literals [3] goes into more detail, but here the `"api"` is
+The official GHC documentation on type-level literals [XXXX] goes into more detail, but here the `"api"` is
 a string literal at the *type* level, not the *value* level.  Servant defines a type-level operator `:>`
 that joins two types together. The result is a chain of elements that our type-level API definition is
 concerned with.
@@ -1210,6 +1245,7 @@ into the web application development world.
 
 ## References
 
-1. "Type-level Web APIs with Servant" (http://www.andres-loeh.de/Servant/servant-wgp.pdf)
-2. "Haskell 2010 Language Report", Simon Marlow, ed. (https://www.haskell.org/onlinereport/haskell2010/)
-3. "Type-Level Literals" (https://downloads.haskell.org/~ghc/7.10.1/docs/html/users_guide/type-level-literals.html)
+1. "Architectural Styles and the Design of Network-based Software Architectures". Fielding, Roy. 2000. (https://www.ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation.pdf)
+2. "Type-level Web APIs with Servant" (http://www.andres-loeh.de/Servant/servant-wgp.pdf)
+3. "Haskell 2010 Language Report", Simon Marlow, ed. (https://www.haskell.org/onlinereport/haskell2010/)
+4. "Type-Level Literals" (https://downloads.haskell.org/~ghc/7.10.1/docs/html/users_guide/type-level-literals.html)
