@@ -608,6 +608,8 @@ the primary key, namely the value `b`, and yield that.
 
 ### Code Organization and Walkthrough
 
+START HERE
+
 As we walk through the code, please refer to the project's GitHub repository:
 
 ```
