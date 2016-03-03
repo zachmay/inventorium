@@ -608,8 +608,6 @@ the primary key, namely the value `b`, and yield that.
 
 ### Code Organization and Walkthrough
 
-START HERE
-
 As we walk through the code, please refer to the project's GitHub repository:
 
 ```
@@ -618,15 +616,15 @@ https://github.com/zachmay/inventorium
 
 **Docker Container Definitions**
 
-Recall that we use Docker to host isolated, virtualized components (i.e., containers)
+Recall that we use Docker to host isolated, virtualized environments (i.e., containers)
 for each of the primary components of our system. The top level of the repository contains
 directories for documentation and other utilitarian aspects of the project, but our primary
 concern will be with the `database/`, `webserver/`, and `site/` directories and the file
 `docker-compose.yml`.
 
-These three directories contain the details for Docker containers that will run our database
-server, our web server, and the API server. Each of these directories contains a file `Dockerfile`
-that instructs Docker how to provision and set up the container. For example, `database/Dockerfile`
+These three directories contain the details for Docker containers that will run our database, web, and
+API servers. Each of these directories contains a file `Dockerfile`
+that describes how Docker should provision and set up the container. For example, `database/Dockerfile`
 simply says to build a container based on version 9.4 of the official PostgreSQL Docker image.
 `webserver/Dockerfile` is more involved, installing the `nginx` web server and performing 
 setup tasks such as copying configuration files and exposing standard HTTP ports. `site/Dockerfile`
@@ -634,7 +632,7 @@ builds from a standard Haskell image and does some configuration so that the API
 container can be used as both a virtualized development environment and host the final executable.
 
 Finally, `docker-compose.yml` is a configuration file for the `docker-compose` tool, which
-orchestrates bringing all three component containers into service simultaneously and ensure
+is responsible for bringing all three component containers into service simultaneously and ensuring
 that they are configured to work with each other, in this case by specifying environment
 variables and exposing network ports between containers so that the API server can communicate
 with the database. 
@@ -643,16 +641,23 @@ with the database.
 
 Before we move to the Haskell source code, we need to look at one more configuration file:
 `site/inventorium.cabal`, a configuration file for Haskell's Cabal package manager. It
-describes the package's legal details, dependencies, and compiler options. Once we have
-a "Cabal file", we can use `cabal` to install all of the libraries our package depends on
-and compile our own code using the appropriate options.
+describes the package's license, dependencies, and compiler options. If a Haskell software package
+includes a "Cabal file", we can use `cabal` to install all of its dependent libraries
+and compile it using the appropriate compiler options.
 
 One particular set of options, `default-extensions` describes all of the language extensions
-our package will use beyond the Haskell 2010 standard [XXXX]. These extension are required to make
-use of the Servant library, but they are not part of the language standard. Because these 
-extensions are only supported by the GHC compiler, the project is not portable across compilers.
-However, GHC is the de facto standard and is the only Haskell compiler that is widely used and
-maintained.
+our package will use. While there is a langauge standard for Haskell [XXXX], its use
+as a testbed for programming language theory means that new features are added to the GHC
+compiler frequently. To prevent every new release breaking existing code, GHC uses a system
+of language extensions that can be enabled or disabled at will, even on a file-by-file basis.
+In this way, users who want access to new language features can use them without forcing them
+on all users.
+
+However, there is one caveat with GHC's language extensions: they are only supported by the GHC,
+which means that a project that uses GHC language extensions will not be portable to other compilers.
+However, this is only a minor concern. GHC is the de facto standard, can target a wide array of platforms,
+and is the only optimizing Haskell compiler available. Moreover, the general trend in the Haskell community
+is to embrace langauge extensions: both Servant and Persistent make use of them extensively.
 
 **Types**
 
@@ -665,7 +670,8 @@ following:
 - Each `ItemType` also has a list of `ItemTypeProperty`s that model the fields
   that a user can enter to describe that item. For example, laptops might have
   a field to enter the hard disk size, amount of RAM, manufacturer, and purchase
-  year.
+  year. Users can create new `ItemType`s and along with the `ItemTypeProperty`s that
+  can be used to describe them.
 - An `Item` represents an inventory item (like a computer or tablet) that is
   tracked in the system. It has an `ItemType` and is described by a a collection
   of `ItemProperty`s that correspond to the `ItemType`'s `ItemTypeProperty`s.
@@ -675,70 +681,45 @@ following:
 
 This domain model is described in the file `site/src/model`. This definition file
 is used by the Persistent library's compile-time metaprogramming facilities to
-generate Haskell code that defines the appropriate data types. Here is the part of
-that file that generates types corresponding to the `Building` entity:
+generate Haskell code that defines the appropriate data types as we saw earlier.
+This model definition is referenced in `site/src/Types/Model/Persistent.hs` when we invoke
+Persistent metaprogramming facilities to generate our model's data types. At compile time, the generated
+Haskell code is spliced into our own and compiled.
 
-```
-Building json
-    name             Text
-    description      Text
-    created          UTCTime default=CURRENT_TIMESTAMP
-    updated          UTCTime default=CURRENT_TIMESTAMP
+Each of the domain model entities described above is modeled
+as a Haskell record type and a distinct primary key type is defined. Even if
+all of the primary keys are really just integers in the database, distinguishing between
+`BuildingId` and `ItemId` in application code enables us to leverage the compiler's type
+safety guarantees: the compiler will not allow us to query for an `Item` using a `BuildingId`.
 
-    UniqueBuildingName name
-
-    deriving Eq Ord Show
-```
-
-We define a type `Building`, instructing Persistent to generate code to allow us to
-automatically convert to and from JSON via the `ToJSON` and `FromJSON` typeclasses.
-We define four fields along with their data types and, in the case of the `created`
-and `updated` fields, their default values. Then we define a unique key for this
-entity: we can use `UniqueBuildingName` to query for a unique building record. This
-corresponds to a unique key constraint in the database definition. Finally, we
-instruct Persistent to use Haskell's typeclass derivation to automatically create
-implementations of the `Eq`, `Ord`, and `Show` typeclasses for the `Building` type.
-
-This model definition is referenced by the following lines from `site/src/Types/Model/Persistent.hs`:
-
-```
-share [mkPersist sqlSettings, mkMigrate "migrateAll"]
-    $(persistFileWith lowerCaseSettings "src/model")
-```
-
-At compile time, the Haskell code generated by these lines is spliced into our own
-Haskell code and compiled. In particular, each of our domain model entities is modeled
-as a Haskell record type and a distinct identifier type is defined. In essence, even if
-all of the primary keys for our entities are really just integers, `BuildingId` and `ItemId`
-are distinct types, so the compile will not allow us to query for items using a building's ID.
-
-Perhaps the one drawback is that all of the resulting definitions are simply dumped into the same
-module. For this reason, the modules defined in `site/src/Types/Model/` import the module
-defined by Persistent re-export things as needed in a more organized way. In addition, each
+Perhaps the one drawback is that all of the resulting definitions are spliced into the same
+module. For this reason, the modules defined in `site/src/Types/Model/` import this module
+and re-export things a more organized way. In addition, each
 of these modules defines some related data types and typeclass instances. To illustrate, we 
 will walk through `site/src/Types/Model/Building.hs`.
 
 ```
 instance ToText BuildingId where
     toText k = pack . show . fromSqlKey $ k
-```
 
-Here we define the `ToText` instance for `BuildingId`s. This is used by Servant to convert
-a building ID that we got from the database. Essentially, this is just a series of manual type
-conversions: we convert the `BuildingId` into an integer, turn that into a `String`, and 
-then convert that into a `Text` object, where `Text` is Haskell's more performant string 
-data type. For historical reasons, `String` is a linked list of characters and is quite
-inefficient.
-
-```
 instance FromText BuildingId where
     fromText t = toSqlKey <$> (readMaybe . unpack $ t)
 ```
 
-This is the corresponding typeclass instance that takes a `Text` representation of
-a building ID and returns it as a `BuildingId`. The typeclass definition takes into
-account the possibility that the parse will fail, so our implementation must do that
-as well.
+Here we define the `ToText` and `FromText` instances for `BuildingId`s. These typeclasses are used by
+Servant to convert values to and from text for use in, for example, URLs. `Text` is a recent
+addition to Haskell. `Text` is a more efficient string data type, compared to `String` which is,
+for historical reasons, implemented as a linked list of characters.
+
+The implementation of `ToText` is simply a series of transformations. We convert the `BuildingId`
+from an `SqlKey` into an integer, turn that into a `String`, and then convert that into a `Text` object.
+This illustrates one flaw in Haskell's libraries: because some use `String` and some `Text`, conversion
+between the two is often required.
+
+`FromText` is the corresponding typeclass that takes a `Text` representation of a value
+and returns a native value if possible. This implementation is almost the exact reverse of
+the `ToText` implementation, but because the typeclass definition takes into
+account the possibility that the parse will fail, our implementation must as well. 
 
 ```
 data BuildingDetail =
@@ -748,11 +729,11 @@ data BuildingDetail =
         }
 ```
 
-The `Building` datatype generated by Persistent contains all of the detail that are stored
-in the corresponding database table, but not related records, in particular the rooms
-that are associated with the building. This composite datatype groups a building 
+The `Building` datatype generated by Persistent contains all of the details that are stored
+in the corresponding database table, but not related records such as the rooms
+associated with each building. To model this aggregate, we define a datatype that groups a building 
 record with a list of room records. We use `Maybe` to allow for the possibility that the
-collection of rooms might not be populated for performance reasons.
+collection of rooms might not be populated. 
 
 ```
 instance ToJSON BuildingDetail where
@@ -761,10 +742,10 @@ instance ToJSON BuildingDetail where
 ```
 
 This implementation of the `ToJSON` typeclass enables Servant to automatically marshall a
-`BuildingDetail` value into a JSON encoding for returning in an API response. Essentially,
-we convert the building record to JSON using Persistent's automatically generated ToJSON
-implementation and update the resulting record with a field for the building's rooms if
-present.
+`BuildingDetail` value into a JSON encoding for use in API responses. Essentially,
+we convert the building record to JSON using Persistent's automatically generated `ToJSON`
+implementation for `Building` and update the resulting record with a field for the building's
+rooms if present.
 
 ```
 data BuildingSortBy = BuildingSortByDateCreated
@@ -788,10 +769,9 @@ instance FromText BuildingSortBy where
 ```
 
 Here we define a data type that will describe how a list of building results will be sorted.
-So, if we receive a request for `/buildings?sort=name`, we have a type-safe value to represent
-that option. We define `ToText` and `FromText` so that `BuildingSortBy` values can be converted
-to and from text when Servant parses a request URL.
-
+So, if we receive a request for `/buildings?sort=name`, we have a type-safe value `BuildingSortByName`
+to represent that option. We define `ToText` and `FromText` so that `BuildingSortBy` values can be converted
+to and from `Text` when Servant parses a request URL.
 
 ```
 data BuildingExpand = BuildingExpandRooms
@@ -807,9 +787,9 @@ instance FromText BuildingExpand where
 
 Similarly, we want the users of our API to be able to manually select what related information
 is returned by the API. In this case, API clients can specify whether or not to retrieve the rooms
-attached to a building, saving a database query if the room information is not needed. As with
+attached to a building, saving an unnecessary database query if the room information is not needed. As with
 `BuildingSortBy`, we define how to convert `BuildingExpand` values to and from `Text` so
-that Servant can parse them and hand over type-safe values to our implementation code.
+that Servant can parse them into type-safe values for our application code.
 
 We will see how these types are used when we look at the type-level definition of our application's
 API in the following section.
@@ -830,20 +810,20 @@ type AuthenticationApi =
         :> Post '[JSON] AuthResponse
 ```
 
-The official GHC documentation on type-level literals [XXXX] goes into more detail, but here the `"api"` is
-a string literal at the *type* level, not the *value* level.  Servant defines a type-level operator `:>`
-that joins two types together. The result is a chain of elements that our type-level API definition is
-concerned with.
+The official GHC documentation on type-level literals [XXXX] goes into more detail, but here `"api"` is
+a string literal at the *type* level, not the *value* level. Servant defines a type-level operator `:>`
+that joins two types together. The result is a chain of elements that define our type-level API definition as
+a series of component types that describe various aspects of this particular API endpoint.
 
-In this case, `"api" :> "auth"` corresponds to an API endpoint that will match a URL like `/api/auth`.
-Going further down the chain of `:>` operators, `ReqBody` declares that we require requests to this
-endpoint havea request body, in JSON format to be decoded into a value of type `AuthRequest`.
-Then `Post` declares that the endpoint should respond to HTTP `POST` requests and that the response
+In this case, `"api" :> "auth"` are two URL path fragments. As a result, Servant will route requests to the URL
+`/api/auth` to the associated handler. Continuing down the chain of `:>` operators, `ReqBody` declares that we
+require requests to this endpoint have a request body, in JSON format, to be decoded into a value of type `AuthRequest`.
+Finally, `Post` declares that the endpoint should respond to HTTP `POST` requests and that the response
 should be a value of type `AuthResponse` that can be encoded into JSON.
 
 `AuthRequest` and `AuthResponse` are two data types defined in `site/src/Types/Misc.hs`. An 
 `AuthRequest` is just a record containing a user name and a password, while an `AuthResponse`
-is a record with a status indicator and the authentication token or error message, as appropriate.
+is a record with a status indicator and an authentication token or error message, as appropriate.
 
 While there is only one endpoint definition for authentication, the facility management
 definitions have several. The file `site/src/Types/Api/Facilities.hs` exports the type-level
@@ -852,65 +832,76 @@ API definitions for managing rooms and buildings. Here is a fragment adapted fro
 ```
 {- /api/buildings -}
 "api" :> "buildings"
-    :> Authorized
+    :> Header "Authorization" AuthToken
     :> QueryParams "sort" (SortField BuildingSortBy)
     :> QueryParams "expand" BuildingExpand
     :> Get '[JSON] [BuildingDetail] :<|>
 
 {- /api/buildings/:buildingId -}
-"api" :> "buildings" :> Capture "buildingId" (Key Building)
-    :> Authorized
+"api" :> "buildings" :> Capture "buildingId" BuildingId
+    :> Header "Authorization" AuthToken
     :> QueryParams "expand" BuildingExpand
     :> Get '[JSON] BuildingDetail
-
 ```
 
 Here we see another operator defined by Servant: `:<|>`. This operator combines two endpoint 
-definitions into a larger data type, ultimately resulting in a single data type that defines
-our application's entire API.
+definitions into a larger data type. Using `:<|>` to chain together several endpoint definitions
+will result in a single data type that defines our application's entire API.
 
-These two definitions are similar, but introduce a few new features. `Authorized` is a 
-shorthand for `Header "Authorization" AuthToken` (defined in `site/src/Types/Misc.hs`)
-that declares that an endpoint cares about the HTTP `Authorization` header. In this case,
-we expect the plain-text value of that header to be converted to a value of type `AuthToken`
-and for that `AuthToken` to be exposed to our handler function, which will check it 
-to ensure that the user is authenticated before completing the request. 
+These two definitions are similar, but introduce a few new features. `Header` declares that
+our endpoint expects a specific HTTP header. In this case, our handlers will expect a value
+of type `AuthToken`, parsed from the value of the HTTP `Authorization` header. The handler
+will use that `AuthToken` to ensure that the user is authenticated before completing the request.
 
 We also see `QueryParams`, which is one of Servant's options for handling URL query string
 parameters, the the key/value pairs after the `?` in a URL. For example, `QueryParams "expand"
-BuildingExpand` defines an endpoint is that the Servant framework will handle by looking for
-`expand=` followed by a comma-separated list of strings that correspond to `BuildingExpand`
-values. That list will be exposed to the handler function which must accept a list of `BuildingExpand`
-values as one of its parameters. A similar option, `QueryParam` is available that will parse a
-single optional parameter, passing it as a `Maybe` value, since the parameter may not be specified.
+BuildingExpand` instructs Servant to look for a query string parameter `expand` in a request URL,
+followed by a comma-separated list. This will be parsed into a list of `BuildingExpand` values
+and passed to our handler. A similar option, `QueryParam`, is available that will parse a
+single optional parameter rather than a list, passing it as a `Maybe` value, since the parameter
+may not be specified.
 
 Finally, the second endpoint demonstrates the use of `Capture` to expose a fragment of the URL
 to the handler. In RESTful APIs, it is very common to address resources using a hierarchical
 path, not unlike a directory structure. In our application, `/api/buildings` represents a
 collection of building resources (analogous to a folder containing several files), and 
-`/api/buildings/123` is the address of the building with ID 123. `Capture` instructs Servant
-to capture that fragment of the URL, convert it to a value of type `Key Building` (i.e., the
-data type of the primary key of `Building` records), and to pass that into the handler.
+`/api/buildings/123` is the URL of the building with ID 123 within that collection.
+`Capture` instructs Servant to capture that fragment of the URL, parse it into a value of type
+`BuildingId`, and to pass that into the handler.
 
 **Handlers**
 
-Now we will look at how our API endpoints are handled. It is important to note that essentially
-all the work dealing with HTTP requests will be done at this point. In other words, the type-level
-API definition instructed Servant which headers and query string parameters to look at, how to parse things,
-and when to return many types of HTTP errors. That same type-level definition was also used to
-type-check our handler functions at compile time, but we still need write the code that takes the
-values extracted from the request and use them to make updates and return a response.
+Now we will look at the handler functions that service requests to our API's endpoints.
+It is important to note that much of the work of dealing with HTTP requests will be done at this point.
+In particular, Servant has already used the type-level API definition to parse headers and query string
+parameters and return appropriate HTTP errors if the request did not meet our API's preconditions.
+We still need to write the code that takes these values and does something useful with them, but
+those functions will be type-checked against the same type-level definition.
 
-Much like our type-level API definitions, the handler definitions are spread across three files.
-In this case, the `Handlers` module in `/site/src/Handlers.hs` exports a combined value that
-groups all of our application's endpoints together. Of note, it appears that both of these files use
-the same operator, `:<|>`, to group things, but they are actually quite different. When grouping
-the type-level API definitions, `:<|>` is being used as a type-level operator. When grouping handlers,
-it's a value-level operator, not so different from `+` or `*`, that combines functions.
+Much like our type-level API definitions, the handler definitions are spread across three files
+for organizational purposes. The facilities management endpoints are grouped together using
+a familiar operator:
 
-In particular, given two endpoints `a` of type `A` and `b` of type `B`, `a :<|> b` will have type
-`A :<|> B`. This is part of the machinery for how Servant's type-level definitions get used to
-type-check handlers at compile time.
+```
+facilitiesHandlers :: ServerT FacilitiesApi Handler
+facilitiesHandlers = getBuildingList
+                :<|> postBuildingList
+                :<|> getBuilding
+                :<|> putBuilding
+                :<|> deleteBuilding
+                :<|> getRoomList
+                :<|> postRoomList
+                :<|> getRoom
+                :<|> putRoom
+                :<|> deleteRoom
+```
+
+The individual handlers like `getRoom` are defined later on in the file, but we group these functions
+together using `:<|>`. Previously, we used `:<|>` as a type-level operator, but here it is being
+used as a value-level operator, not so different from `+` or `*`, except that its operands are 
+functions. In particular, given two functions `a` of type `A` and `b` of type `B`, `a :<|> b` will
+have a type that corresponds to the type `A :<|> B`. This is part of the machinery for how Servant's
+type-level definitions get used to type-check handlers at compile time.
 
 Consider this handler function for retrieving an individual building resource, corresponding to
 the type-level definition for the `/api/building/:buildingId` endpoint:
@@ -930,26 +921,26 @@ getBuilding buildingId auth expand = do
 ```
 
 Referring back to the corresponding type-level definition, we know that Servant will capture
-a `BuildingId` from the URL, an optional `AuthToken` (hence `Maybe`), and a list of `BuildingExpand`
-options. As we can see, that corresponds to the three parameters of our handler function. The return
-type is perhaps unusual though: rather than return a `BuildingDetail` value, the return type is
-`Handler BuildingDetail`.
+a `BuildingId` from the URL, an optional `AuthToken`, and a list of `BuildingExpand`
+options. These captured values correspond to the three parameters of our handler function. Our 
+handlers operate in the `Handler` stack, the return type indicates that, rather than returning
+a `BuildingDetail` value directly, they yield one to a subsequent computation in that monad.
 
-![The `Handler` Monad Stack](monad-stack.png)
-
-This is because our handler functions are *monadic*. We will not address monads here, but our
-handlers actually return computations that execute in a particular context and yield the appropriate
-values. The definition of the `Handler` type is:
+The `Handler` monad is defined as follows:
 
 ```
 type Handler = ReaderT Config (EitherT ServantErr IO)
 ```
 
-`Handler` is a *monad stack*. Reading from the inside out, `Handler` builds on the `IO` monad,
-which allows computations that perform arbitrary I/O, extends that with `EitherT` which allows
-computations to potentially fail with some error value (in this case, Servant's `ServantErr` type),
-then extending that with `ReaderT` allow read-only access to configuration information (in this case,
+`Handler` is a *monad stack*, which uses a chain of *monad transformers* to extend a base monad
+with other functionality. Reading from the inside out, `Handler` builds upon the `IO` monad,
+which allows computations that perform arbitrary I/O. That is then extended with the `EitherT`
+monad transformer, allowing for computations to potentially fail with some error value (in this case,
+Servant's `ServantErr` type). The resulting monad is further extendend with the `ReaderT` transformer to
+allow read-only access to configuration information (in this case,
 a type that contains information about a pool of database connections our handlers can use).
+
+![The `Handler` Monad Stack](monad-stack.png)
 
 Looking back at the definition of our `getBuilding` handler, we see that it uses Haskell's `do`
 notation to sequence monadic computations. Without going into detail, `do` allows us to sequence
@@ -969,35 +960,34 @@ checkAuthToken (Just _) = do
 
 This function also operates in the `Handler` monad, but it returns `()`, or "unit",
 a meaningless value we do not care about. In this incomplete implementation, we
-simply use pattern matching to determine whether an authentication token was 
+use pattern matching to determine whether an authentication token was 
 supplied at all. If not, our computation fails with a `ServantErr` corresponding
 to HTTP `401 Unauthorized`. This error result short-circuits the evaluation of
-subsequent computations and that `ServantErr` value is used by Servant to issue
+subsequent computations and the `ServantErr` value can be used by Servant to issue
 an appropriate HTTP response.
 
 When an authentication token is present, we simply yield `()` which further computations
-can ignore and proceed normally. A full implementation would need to check against some data
-store to ensure that the authentication token is valid. If not, the computation would
-again fail with a similar `ServantErr`.
+can ignore and proceed normally. A full implementation would need to check against a database
+to ensure that the supplied authentication token is valid. If not, the computation would
+fail with an appropriate `ServantErr`.
 
-From there, we call `fetchBuildingOr404`, another computation in the `Handler` monad. This
-function takes a building ID and will query the database for it, either yieldng the resulting `Building`
-value or failing with a `ServantErr` corresponding to HTTP `404 Not Found`.
+Once the user's credentials are checked, we call `fetchBuildingOr404`, another computation in the `Handler`
+monad. This function takes a building ID and will query the database for it, either yieldng the
+resulting `Building` value or failing with a `ServantErr` corresponding to HTTP `404 Not Found`.
 
-Then we attempt to fetch the rooms associated with the building. We use a `where` clause to define
-that operation without cluttering the main flow of the function. If `BuildingExpandRooms` is among
-the options in `expand`, we pull in the associated rooms, if not we just yield `Nothing` to indicate
-that we did not attempt to retrieve them.
+Upon successfully retrieving a `Building` record, we attempt to fetch the rooms associated with the
+building if requested via the `expand` query string parameter. We use a `where` clause to define that
+operation without cluttering the main flow of the function.
 
 Finally, we create a `BuildingDetail` record that contains our `Building` (using Persistent's
-`Entity` type which ties a record with its database ID) along with the associated rooms if
-requested, and yield that as the result of our `Handler` computation. At this point, our code is
-done. Servant uses the type-level API definition to marshall values from Haskell data types into
-whatever encodings are needed and builds up the HTTP response to return to the client.
+`Entity` type which links a record with its database ID) along with the associated rooms if
+requested. The handler yields that value as the result of our its computation. At this point, the
+handler is finished. Servant uses the type-level API definition to marshall the resulting value into
+whatever encoding was requested and builds up the HTTP response to return to the client.
 
 **Wiring Things Together**
 
-With all these details in place, wiring our application together is not all that complicated. The API
+With all these details in place, wiring our application together is relatively simple. The API
 server executable starts up when the API server container is brought online. Its entry point is the
 `main` function in `src/site/Main.hs`.
 
@@ -1013,13 +1003,13 @@ main = do
     run port $ logStdout $ app config
 ```
 
-In Haskell, the `main` function always has type `IO ()`: intuitively, `main` is a pure function that lazily returns a computation
-that will result in the value `()`, the "unit" value we have seen before. Our program actually gets executed when the Haskell
-run-time forces the full evaluation of that lazy value.
+In Haskell, the `main` function always has type `IO ()`: intuitively, `main` is a pure function that returns a lazy computation
+that will ultimately result in the value `()`, the "unit" value we have seen before. Our program actually gets executed
+when the Haskell run-time forces the full evaluation of that lazy computation.
 
 First, we need to know what port to listen to for API requests. In our application's architecture, API requests are forwarded
 from the HTTP server to the API server on a port defined in `docker-compose.yml`. This port number is assigned to an
-environment variable in the API server container. We use `lookupSetting` to retrieve this value:
+environment variable in the API server container by `docker-compose`. We use `lookupSetting` to retrieve this value:
 
 ```
 
@@ -1030,15 +1020,17 @@ lookupSetting env def = do
                        Just a  -> read a
 ```
 
-This `IO` action takes an environment variable name and a default value of type `a`. The type `a` must implement the typeclass
-`Read` so that we can convert any possible `String` value we retrieve into the native Haskell type `a`. We use `lookupEnv` 
+This `IO` action takes an environment variable name and a default value of type `a`. The type `a` must implement the `Read`
+typeclass so that we can parse the value of that environment variable retrieve into a native Haskell type `a`. We use `lookupEnv` 
 to look up the value of the variable `env` in the current environment, yielding a `Maybe String`. If the environment variable
 was not defined, we get `Nothing` and yield the default value. If we find a value, we parse that string into a native value
-using the `read` function provided by the `Read` typeclass and yield the result.
+using the `read` function provided by the `Read` typeclass and yield the that.
 
 Now we need to configure our database connection pool. Rather than repeatedly opening and closing database connections, we
-instead create a pool of them. When a handler needs to communicate with the database, it requests a free connection and releases
-that connection when it is finished. The `makePool` function creates our connection pool:
+instead create a pool of them that are kept open throughout the lifetime of the server process. When a handler needs to
+communicate with the database, it requests a free connection, releasing it back to the pool when finished.
+The `makePool` function initializes a pool of database connections; it ishard-coded to allocate four connections, but
+this value could be configured via an environment variable.
 
 ```
 makePool :: IO ConnectionPool
@@ -1054,70 +1046,65 @@ makePool = do
                 runStdoutLoggingT $ createPostgresqlPool connectionString 4
 ```
 
-We use `lookupEnvironment` to retrieve the database connection details. It works like `lookupEnv` but takes a default
-value to return if the environment variable is not defined. We use those details to create a PostgreSQL connection
-string and use the PostgreSQL library's `createPostgresqlPool` to create a pool of 4 connections.
+With our connection pool created, we create a `Config` value, a record type that stores a reference to the connection pool.
+If future requirements demanded that other pieces of read-only configuration data be exposed throughout the application,
+they could be included in `Config`.
 
-With our connection pool created, we create a `Config` value. Our application's `Config` type is just a record
-that stores a reference to our connection pool. We also pass that connection pool to `doMigrations`, which will
+We also pass the `Config` value to `doMigrations`, which will use the connection pool
 automatically update the PostgreSQL schema on the database server based on the Persistent schema defined when
-we compiled the executable.
+we compiled the executable. This helps to ensure that the schemas being used by the database and the API server are
+in sync.
 
-Finally, we use the function `run` to start up our application server. This function is provided by the Warp library,
-which offers a high performance, event-driven implementation of low-level HTTP server needs like network access, request
-parsing, and so on. We simply pass in our own request handling code.
-
-The value `app` wraps our Servant API handlers into a value that Warp can interact with and we inject our read-only
-configuration value so that our handlers have access to the database connection pool.  Additionally, we pass this into
-`logStdout` to direct any application logging to standard output.
+Finally, We initialize the application's Servant API by passing in the configuration details and use `logStdout` to
+direct any application logging to standard output. The result is passed into the `run` function to start up the
+application server.  This function is provided by the Warp library, which offers a high performance, event-driven
+implementation of low-level HTTP functionality: it listens for network connections and performs basic preprocessing of HTTP
+requests before delegating to our application code to generate the responses.
 
 ## Testing
 
 Due to time constraints, an exhaustive automated test suite was not implemented. Manual testing
 was performed on implemented endpoints based on a known initial database state. This could have 
 been implemented as a series of automated integration tests, but there was not enough time to
-complete that.
+complete that. However, two popular Haskell testing frameworks were researched.
 
-Although we did not have enough time to implement any form of automated tests, two popular
-Haskell testing frameworks were researched.
+QuickCheck is a property-based testing library [XXXX]. Relevant properties are expressed as predicates
+and QuickCheck randomly generates test cases, asserting that each of those properties holds.
+In the event that a property fails to hold, QuickCheck is capable of searching through the space of
+possible test cases to find a minimal instance that still fails.
 
-QuickCheck is a property-based testing library. Relevant properties are expressed as predicates
-and QuickCheck randomly generates test cases and asserts that each of those properties holds.
-In the event a property fails to hold, QuickCheck is capable of searching through the space of
-test cases to find a minimal instance that still fails.
-
-Property-based testing is a natural fit for Haskell. Because programs tend to focus on pure
+Property-based testing is a natural fit for Haskell. Because Haskell programs tend to focus on pure
 transformation of values by function application, the algebraic properties of those functions
 are often more relevant than test cases that set up some pre-conditions, execute a procedure, and
 then make an assertion about the post-conditions. Moreover, Haskell's purity by default means
-that repeatedly running tests is safe and we can be confident that the same code will not
-mysteriously stop working in a production environment.
+that repeatedly running tests is safe and tests are not likely to fail intermittently, which can be
+a major obstacle to confidence in a test suite.
 
-Perhaps due to my inexperience with Haskell, it seemed like the bulk of my code was still
-fundamentally impure (i.e., it was ultimately executed in the `IO` monad), which to my
-knowledge makes QuickCheck unsuitable.
+It is not clear how suitable QuickCheck would have been for this project's code base. Perhaps due to
+my inexperience with Haskell, it seemed like the bulk of my code was still fundamentally impure,
+since most of the code ran in the `Handler` monad, which ultimately relies on `IO`.
 
-Another option is the HSpec library. In the vein of Ruby's RSpec, HSpec supports a testing
-and development paradigm known as *behavior-driven development* (BDD). In BDD, requirements
-are expressed in natural language and paired with an automated test that should prove the
+Another option is the HSpec library [XXXX]. In the vein of Ruby's RSpec, HSpec supports a testing
+and development paradigm known as *behavior-driven development* (BDD) [XXXX]. In BDD, all requirements
+are expressed in naturali language and are linked to automated tests that should prove the
 requirement is properly implemented. HSpec defines a DSL for describing requirements and
 related tests, including typical assertion-based tests and property-based tests. HSpec is
 suitable for testing impure code and can run set-up procedures before executing each test,
 e.g., resetting a database to some known state. Additionally, there is an experimental
-library called HSpec-WAI that aids in describing the behavior of web application endpoints.
+library called HSpec-WAI that aids in describing requirements for web application endpoints. [XXXX]
 
 ## Challenges
 
-Haskell is, in many ways, a strange language. Going from writing PHP at work to
+Haskell is, in many ways, an unusual language. Transitioning from writing PHP at work to
 writing Haskell for this project, it seemed as though Haskell made a conscious effort to
-do *everything* differently: the functional paradigm rather than imperative or object-oriented
+do *everything* differently: the functional paradigm instead of imperative or object-oriented
 code, a strict type system, lazy evaluation. Working with such a radically different
 technology stack created a high barrier to productivity.
 
 Frequently during the course of this project, I came across a task that I did not know
 exactly how to accomplish. Often this was something that might have been easy to do
-in PHP, although probably without Haskell's safety. However, with a bit of research or
-experimentation, I found a solution and learned a lot in the process. In a school project,
+in PHP or Java, although likely without Haskell's safety. However, with a bit of research or
+experimentation, I found a solution and learned a lot in the process. In an academic project,
 this is only a positive. In an industrial setting, these delays would certainly be more
 costly.
 
@@ -1136,69 +1123,72 @@ development experience. I want to share one particular experience that really im
 me.
 
 Most of the way through the process of developing the API, it became clear that there 
-were some pretty serious shortcomings with the codebase, particularly how it was
-organized. There was too much code in the main file that was not relevant to bootstrapping
-the application server. A file describing the domain model and auxiliary datatypes was
-strateching into the hundreds of lines (which is a lot in a language as expressive as
-Haskell). 
+were some pretty serious shortcomings with the quality of the codebase and how it was
+organized. There was simply too much code in the main file that was not relevant to bootstrapping
+the application server and the file describing the domain model and auxiliary datatypes was
+streteching into the hundreds of lines.
 
-I decided to do a major refactor to imporve the situation. I moved a few definitions around,
+I decided to do a major refactor to improve the situation. I reorganized some data types,
 essentially "sketching out" how the code would be organized. Of course, the project no longer
 compiled. From there, I fixed compiler errors (there were a lot!) until the program compiled.
-The really impressive part was that one it did compile, all of the API endpoints worked just
-as they did before the refactor. 
+The really impressive part was that one it did compile, I re-ran my suite of manual tests
+and all of the API endpoints worked just as they did before the refactor.
 
-In my experience with PHP, a refactor of this magnitude would have a similar project a
-complete disaster. Coincidentally, we implemented a similar set of refactorings on a PHP
+Coincidentally, we implemented a similar set of refactorings on a PHP
 web API at my job at the same time I was working on this project and the contrast between
 the experiences with those two code changes was profound. Seeing how pleasant refactoring
-could be made struggling with PHP very frustrating!
+could be with strong static guarantees made struggling with PHP very frustrating.
 
-I think that the biggest factor that makes refactoring in Haskell so pleasant is the
+I believe that the biggest factor that makes refactoring in Haskell so pleasant is the
 strong, static type system. PHP code frequently makes use of untyped associative arrays
-and uses strings or integers to pass around options or flags. Even when using a feature
-called *type hints* to be explicit about what data types a function parameter should
-be, type mismatches are not reported until runtime. 
+and uses strings or integers to pass around options or flags. Even when using classes to
+express domain data types and *type hints* to explicitly define what data types a function
+parameter should accept, type mismatches are not reported until runtime.
 
 With Haskell, untyped associative arrays are replaced with strongly-typed record data
-types and a set of flags can be encoded as a sum type. Moreover, all of this is checked
-for consistency before the program even starts to run. With the Servant library and its
-DSL for specifying the type-level definitions of your API, the compiler is able to make
-even higher level guarantees about your code. I do not mean to be hyperbolic, but coming
-from PHP, this is a revelation and makes me a bit envious!
+types and program flags can be expressed as sum types rather than simple strings or integers.
+Moreover, all of this is checked for consistency before the program even starts to run.
+With the Servant library and its DSL for specifying the type-level definitions of your API,
+the compiler is able to make higher-level guarantees about the correspondnce between
+your handlers and the API specification. The practical difference, in terms of 
+confidence in the correctness of code, is enormous.
 
 ## Future Work
 
-Much more work would still need to get this project to a point where it were useful to
+Much more work is needed to get this project to a point where it would be useful to
 end-users. My main focus during the semester I spent working on this was the development
-of the API using non-standard techniques. As a result, the front-end is still entirely
+of the API using a non-mainstream language. As a result, the front-end is still entirely
 unimplemented.
 
 However, in the time between starting the project and completing this report, my team at
 work began exploring an interesting technology for developing front-end user interfaces:
-the Elm programming language.
+the Elm programming language [XXXX].
 
 JavaScript is the standard for developing interactive user interfaces on the web because
 it is the language that every modern browser understands. However, JavaScript has its
 limitations. Like PHP on the server side, JavaScript is a dynamically-typed language
-and has the same problems in terms of maintainability and lack of tooling to support
-correct code. 
+and has the same problems in terms of maintainability.
 
 Elm's approach is to sidestep the problems of JavaScript by offering a language that is
-heavily influenced by Haskell (in fact, its compiler is writtein in Haskell), that compiles
+heavily influenced by Haskell (in fact, its compiler is written in Haskell) that compiles
 to JavaScript that can run natively in any browser. In addition, it offers powerful
 libraries for implementing user interfaces using a technique known as *functional reactive
 programming* (FRP). 
 
-In Elm's implementation of FRP, values that may change over time are modeld as *signals*.
-In particular, mouse clicks,  text entries, and so on are viewed as a signal of user
-interface events. The current application state is modeled with a function that takes
+In Elm's implementation of FRP, values that may change over time are modeled as *signals*.
+In particular, mouse clicks, text entries, and so on are viewed as a signal of user
+interface events. The current application state is derived from 
+
+START HERE
+
+modeled with a function that takes
 the entire past history of the signal of UI events and yields a signal of application state.
 Finally, the UI is rendered as a function that maps the current application state
 to the user interface, represented using a virtual implementation of the browser's document
 object model (DOM).
 
-So, in essence, Elm models a user interfaces as a signal of UI events that derives a
+So, in essence, Elm models a user interfaces as:
+a signal of UI events that derives a
 signal of application states that maps to a signal of UI states, with event handlers ready
 to inject new values into the signal of UI events. This is a very clean model and, though
 it may seem inefficient, Elm manages some very impressive performance metrics. For example,
@@ -1249,5 +1239,10 @@ into the web application development world.
 
 1. "Architectural Styles and the Design of Network-based Software Architectures". Fielding, Roy. 2000. (https://www.ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation.pdf)
 2. "Type-level Web APIs with Servant" (http://www.andres-loeh.de/Servant/servant-wgp.pdf)
-3. "Haskell 2010 Language Report", Simon Marlow, ed. (https://www.haskell.org/onlinereport/haskell2010/)
-4. "Type-Level Literals" (https://downloads.haskell.org/~ghc/7.10.1/docs/html/users_guide/type-level-literals.html)
+3. "Haskell 2010 Language Report". Simon Marlow, ed. (https://www.haskell.org/onlinereport/haskell2010/)
+4. "Type-Level Literals". (https://downloads.haskell.org/~ghc/7.10.1/docs/html/users_guide/type-level-literals.html)
+5. "QuickCheck". Koen Claessen. (https://github.com/nick8325/quickcheck)
+6. "Introducing BDD". Dan North. (http://dannorth.net/introducing-bdd/)
+7. "HSpec: A Testing Framework for Haskell". Simon Hengel. (http://hspec.github.io/)
+8. "HSpec-Wai". Fujimura Daisuke, Simon Hengel. (https://github.com/hspec/hspec-wai#readme)
+9. "The Elm Architecture". Evan Czaplicki. (https://github.com/evancz/elm-architecture-tutorial)
