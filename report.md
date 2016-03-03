@@ -3,10 +3,10 @@
 ## Description and Motivation
 
 During the Spring 2015 semester, Dr. Hayes introduced our software engineering class
-to XXXX and XXXX, who are involved with managing technology for Powell County Schools.
+to two instructional technology managers from the  Powell County school system.
 In an experiment in software team management, the class organized into subgroups to design
 and implement a single software package for tracking the significant inventory of
-desktop computers, laptops, tablets, and other pieces of technology that XXXX and XXXX
+desktop computers, laptops, tablets, and other pieces of technology that these users
 were tasked with managing.
 
 For various reasons, the project was unsuccessful. However, being from Eastern Kentucky myself,
@@ -21,7 +21,7 @@ was a typical three-tiered architecture:
 - a web API,
 - a relational database.
 
-![Inventorium's Three-Tiered Architecture](architecture.png)
+![Inventorium's Three-Tiered Architecture](diagrams/architecture.png)
 
 We made specific technical decisions based on the realities of the large team. Our primary
 criterion was finding technologies with which our team members had prior experience. 
@@ -80,7 +80,7 @@ issues where, for example, an installed dependency for the database server is in
 the API server. The containers can still communicate over the network by explicitly mapping
 network ports within the containers.
 
-![Project Architecture: Three Docker containers running independently on a single host machine](architecture-diagram.png)
+![Project Architecture: Three Docker containers running independently on a single host machine](diagrams/architecture-diagram.png)
 
 The three primary components of the Inventorium platform are a web server, an API server, and a
 database server, each running in their own containers. The web server is configured to
@@ -117,7 +117,7 @@ with type systems and programming language theory.
 
 Generally, the purpose a web API is to expose the operations of the business domain over HTTP.
 We use an architecture called Representational State Transfer (REST) to accomplish this. Described by
-Roy T. Fielding in his 2000 PhD dissertation [XXXX], REST is an architectural style that emphasizes
+Roy T. Fielding in his 2000 PhD dissertation [1], REST is an architectural style that emphasizes
 building around the fundamental concepts of the web: HTTP and hypermedia (i.e., navigable links between
 entities).
 
@@ -129,9 +129,9 @@ representation of a resource, i.e., a read operation.  A `PUT` request takes a r
 entity and requests that the application store it, i.e., a create request.
 
 
-![Retrieving a domain object, as an HTTP GET request](rest-get.png)
+![Retrieving a domain object, as an HTTP GET request](diagrams/rest-get.png)
 
-![Creating a domain object, as an HTTP PUT request](rest-put.png)
+![Creating a domain object, as an HTTP PUT request](diagrams/rest-put.png)
 
 Other aspects of the API are all handled through the well-defined channels of HTTP. Options and
 parameters can be specified using URL query string parameters and/or HTTP headers. Similarly,
@@ -140,7 +140,7 @@ the result should be the well-known 404 response. If the entity exists but the u
 an representation the server does not know how to provide, the API should instead respond with
 HTTP's "406 Not Acceptable" error code.
 
-![An application error, handled by standard HTTP error codes](rest-error.png)
+![An application error, handled by standard HTTP error codes](diagrams/rest-error.png)
 
 REST can be a restrictive architecture, but its principle of offering a uniform interface to APIs
 is powerful. For example, HTTP defines `GET` requests to be an  *idempotent* operation, meaning that
@@ -179,7 +179,7 @@ a short example that illustrates a few of Haskell's features. The following code
 uses parametric polymorphism to implement a homogeneous linked list and a
 function over that data type.
 
-```
+```haskell
 data List a = Cons a (List a)
             | Nil
             deriving (Eq)
@@ -188,7 +188,7 @@ length Nil              = 0
 length (Cons head tail) = 1 + length tail
 ```
 
-![The linked list `(1, 2)`](linked-list.png)
+![The linked list `(1, 2)`](diagrams/linked-list.png)
 
 We define a data type `List` that takes a single type parameter `a`.  This is a homogeneous
 list, and every element will be of that type `a`. `List` is a recursive, algebraic data type,
@@ -307,11 +307,11 @@ the response, including using appropriate HTTP response codes.
 Servant uses some of the more advanced extensions to the Haskell langauge that have been
 implemented in the de facto standard compiler, GHC. Importantly, it uses type-level literals
 allowing strings, natural numbers, and lists to be used in type definitions. Type-level
-literals are discussed in depth in [XXXX].
+literals are discussed in depth in [2].
 
 Here is a fragment adapted from the project source code:
 
-```
+```haskell
 type FacilitiesApi = "api" :> "buildings"
                      :> Header "Authorization" AuthToken
                      :> ReqBody '[JSON] Building 
@@ -328,7 +328,7 @@ that this endpoint responds to HTTP `POST` requests and will return a JSON encod
 The value of the `Authorization` header and the decoded `Building` value
 will be captured and passed to the handler function, again adapted from the project source:
 
-```
+```haskell
 postBuilding :: Maybe AuthToken -> Building -> Handler BuildingDetail
 postBuilding auth building = do
     checkAuthToken auth
@@ -422,7 +422,7 @@ In many programming langauges, the available database bindings force the program
 dynamic queries using standard string operations. For example, we might need to concatenate 
 an entity ID along with some SQL fragments to build a query. In PHP:
 
-```
+```php
 $query = 'select * from buildings where id = ' . $buildingID;
 ```
 
@@ -431,14 +431,14 @@ generate will be syntactically valid and we will not find out about our mistakes
 Additionally, we have to worry about correctly escaping the strings we concatenate together.
 Consider this example where we search for buildings with a specific `name` value:
 
-```
+```php
 $query = 'select * from buildings where name = "' . $searchTerm . '"';
 ```
 
 In addition to being somewhat difficult to read, there is a more serious issue. Suppose that
 `$searchTerm` contained the string `'hello "world"'`. The resulting SQL would be:
 
-```
+```sql
 select * from buildings where name = "hello "world""
 ```
 
@@ -447,7 +447,7 @@ string into an input field. This is worse than just a bad user experience decisi
 be abused by a malicious attacker. Suppose `$searchTerm` contained `'foo"; drop table buildings; --'`.
 The resulting SQL statement is:
 
-```
+```sql
 select * from buildings where name = "foo"; drop table buildings; --"
 ```
 
@@ -517,7 +517,7 @@ used to uniquely retrieve a room record in the database.
 
 We make use of this schema definition in `site/src/Types/Model/Persistent.hs`:
 
-```
+```haskell
 share [mkPersist sqlSettings, mkMigrate "migrateAll"]
     $(persistFileWith lowerCaseSettings "src/model")
 ```
@@ -529,7 +529,7 @@ value.
 
 This file also defines a function `runDb` that we will see in upcoming examples:
 
-```
+```haskell
 runDb :: SqlPersistT IO a -> Handler a
 runDb query = do
     pool <- asks getPool
@@ -546,7 +546,7 @@ use it to execute the query on the database, and yield a result of type `a`.
 Persistent provides typesafe functions for using our the generated Haskell data types to interact
 with our schema. For example, `get` retrieves a record by primary key. Its type is:
 
-```
+```haskell
 (MonadIO m, backend ~ PersistEntityBackend val, PersistEntity val) =>
     Key val -> SqlPersistT backend m (Maybe val)
 ``` 
@@ -590,7 +590,7 @@ Now we can make database queries in our handlers. Here is a function in our `Han
 attempts to retrieve a `Building` record for a given `BuildingId`. It fails with an HTTP 404 error
 if no such record exists:
 
-```
+```haskell
 fetchBuildingOr404 :: BuildingId -> Handler Building
 fetchBuildingOr404 buildingId = do
     maybeBuilding <- runDb (get buildingId)
@@ -646,7 +646,7 @@ includes a "Cabal file", we can use `cabal` to install all of its dependent libr
 and compile it using the appropriate compiler options.
 
 One particular set of options, `default-extensions` describes all of the language extensions
-our package will use. While there is a langauge standard for Haskell [XXXX], its use
+our package will use. While there is a langauge standard for Haskell [3], its use
 as a testbed for programming language theory means that new features are added to the GHC
 compiler frequently. To prevent every new release breaking existing code, GHC uses a system
 of language extensions that can be enabled or disabled at will, even on a file-by-file basis.
@@ -698,7 +698,7 @@ and re-export things a more organized way. In addition, each
 of these modules defines some related data types and typeclass instances. To illustrate, we 
 will walk through `site/src/Types/Model/Building.hs`.
 
-```
+```haskell
 instance ToText BuildingId where
     toText k = pack . show . fromSqlKey $ k
 
@@ -721,7 +721,7 @@ and returns a native value if possible. This implementation is almost the exact 
 the `ToText` implementation, but because the typeclass definition takes into
 account the possibility that the parse will fail, our implementation must as well. 
 
-```
+```haskell
 data BuildingDetail =
     BuildingDetail
         { building :: Entity Building
@@ -735,7 +735,7 @@ associated with each building. To model this aggregate, we define a datatype tha
 record with a list of room records. We use `Maybe` to allow for the possibility that the
 collection of rooms might not be populated. 
 
-```
+```haskell
 instance ToJSON BuildingDetail where
     toJSON (BuildingDetail { building = b, rooms = rs }) =
             maybeUpdateWithAll (toJSON b) [("rooms", toJSON <$> rs)]
@@ -747,7 +747,7 @@ we convert the building record to JSON using Persistent's automatically generate
 implementation for `Building` and update the resulting record with a field for the building's
 rooms if present.
 
-```
+```haskell
 data BuildingSortBy = BuildingSortByDateCreated
                     | BuildingSortByDateUpdated
                     | BuildingSortByDescription
@@ -773,7 +773,7 @@ So, if we receive a request for `/buildings?sort=name`, we have a type-safe valu
 to represent that option. We define `ToText` and `FromText` so that `BuildingSortBy` values can be converted
 to and from `Text` when Servant parses a request URL.
 
-```
+```haskell
 data BuildingExpand = BuildingExpandRooms
                     deriving (Bounded, Enum, Eq, Ord, Show)
 
@@ -803,14 +803,14 @@ information.
 
 In `site/src/Types/Api/Authentication.hs`, we define a single endpoint:
 
-```
+```haskell
 type AuthenticationApi = 
     "api" :> "auth"
         :> ReqBody '[JSON] AuthRequest 
         :> Post '[JSON] AuthResponse
 ```
 
-The official GHC documentation on type-level literals [XXXX] goes into more detail, but here `"api"` is
+The official GHC documentation on type-level literals [4] goes into more detail, but here `"api"` is
 a string literal at the *type* level, not the *value* level. Servant defines a type-level operator `:>`
 that joins two types together. The result is a chain of elements that define our type-level API definition as
 a series of component types that describe various aspects of this particular API endpoint.
@@ -829,7 +829,7 @@ While there is only one endpoint definition for authentication, the facility man
 definitions have several. The file `site/src/Types/Api/Facilities.hs` exports the type-level
 API definitions for managing rooms and buildings. Here is a fragment adapted from that file:
 
-```
+```haskell
 {- /api/buildings -}
 "api" :> "buildings"
     :> Header "Authorization" AuthToken
@@ -882,7 +882,7 @@ Much like our type-level API definitions, the handler definitions are spread acr
 for organizational purposes. The facilities management endpoints are grouped together using
 a familiar operator:
 
-```
+```haskell
 facilitiesHandlers :: ServerT FacilitiesApi Handler
 facilitiesHandlers = getBuildingList
                 :<|> postBuildingList
@@ -906,7 +906,7 @@ type-level definitions get used to type-check handlers at compile time.
 Consider this handler function for retrieving an individual building resource, corresponding to
 the type-level definition for the `/api/building/:buildingId` endpoint:
 
-```
+```haskell
 getBuilding ::  BuildingId -> Maybe AuthToken -> [BuildingExpand] -> Handler BuildingDetail
 getBuilding buildingId auth expand = do
     checkAuthToken auth
@@ -928,7 +928,7 @@ a `BuildingDetail` value directly, they yield one to a subsequent computation in
 
 The `Handler` monad is defined as follows:
 
-```
+```haskell
 type Handler = ReaderT Config (EitherT ServantErr IO)
 ```
 
@@ -940,7 +940,7 @@ Servant's `ServantErr` type). The resulting monad is further extendend with the 
 allow read-only access to configuration information (in this case,
 a type that contains information about a pool of database connections our handlers can use).
 
-![The `Handler` Monad Stack](monad-stack.png)
+![The `Handler` Monad Stack](diagrams/monad-stack.png)
 
 Looking back at the definition of our `getBuilding` handler, we see that it uses Haskell's `do`
 notation to sequence monadic computations. Without going into detail, `do` allows us to sequence
@@ -948,7 +948,7 @@ monadic computations in much the same way we would statements in an imperative p
 
 In this case, we call `checkAuthToken` to validate the supplied authentication token:
 
-```
+```haskell
 checkAuthToken :: Maybe AuthToken -> Handler ()
 checkAuthToken Nothing = do
     consoleLog "Failed auth: nothing supplied" 
@@ -991,7 +991,7 @@ With all these details in place, wiring our application together is relatively s
 server executable starts up when the API server container is brought online. Its entry point is the
 `main` function in `src/site/Main.hs`.
 
-```
+```haskell
 main :: IO ()
 main = do
     port <- lookupSetting "PORT" 3000
@@ -1011,8 +1011,7 @@ First, we need to know what port to listen to for API requests. In our applicati
 from the HTTP server to the API server on a port defined in `docker-compose.yml`. This port number is assigned to an
 environment variable in the API server container by `docker-compose`. We use `lookupSetting` to retrieve this value:
 
-```
-
+```haskell
 lookupSetting :: (Read a) => String -> a -> IO a
 lookupSetting env def = do
     p <- lookupEnv env
@@ -1032,7 +1031,7 @@ communicate with the database, it requests a free connection, releasing it back 
 The `makePool` function initializes a pool of database connections; it ishard-coded to allocate four connections, but
 this value could be configured via an environment variable.
 
-```
+```haskell
 makePool :: IO ConnectionPool
 makePool = do
     dbUser <- lookupEnvironment "DBUSER" "postgres"
@@ -1068,7 +1067,7 @@ was performed on implemented endpoints based on a known initial database state. 
 been implemented as a series of automated integration tests, but there was not enough time to
 complete that. However, two popular Haskell testing frameworks were researched.
 
-QuickCheck is a property-based testing library [XXXX]. Relevant properties are expressed as predicates
+QuickCheck is a property-based testing library [5]. Relevant properties are expressed as predicates
 and QuickCheck randomly generates test cases, asserting that each of those properties holds.
 In the event that a property fails to hold, QuickCheck is capable of searching through the space of
 possible test cases to find a minimal instance that still fails.
@@ -1084,14 +1083,14 @@ It is not clear how suitable QuickCheck would have been for this project's code 
 my inexperience with Haskell, it seemed like the bulk of my code was still fundamentally impure,
 since most of the code ran in the `Handler` monad, which ultimately relies on `IO`.
 
-Another option is the HSpec library [XXXX]. In the vein of Ruby's RSpec, HSpec supports a testing
-and development paradigm known as *behavior-driven development* (BDD) [XXXX]. In BDD, all requirements
+Another option is the HSpec library [6]. In the vein of Ruby's RSpec, HSpec supports a testing
+and development paradigm known as *behavior-driven development* (BDD) [7]. In BDD, all requirements
 are expressed in naturali language and are linked to automated tests that should prove the
 requirement is properly implemented. HSpec defines a DSL for describing requirements and
 related tests, including typical assertion-based tests and property-based tests. HSpec is
 suitable for testing impure code and can run set-up procedures before executing each test,
 e.g., resetting a database to some known state. Additionally, there is an experimental
-library called HSpec-WAI that aids in describing requirements for web application endpoints. [XXXX]
+library called HSpec-WAI that aids in describing requirements for web application endpoints. [8]
 
 ## Challenges
 
@@ -1162,7 +1161,7 @@ unimplemented.
 
 However, in the time between starting the project and completing this report, my team at
 work began exploring an interesting technology for developing front-end user interfaces:
-the Elm programming language [XXXX].
+the Elm programming language [9].
 
 JavaScript is the standard for developing interactive user interfaces on the web because
 it is the language that every modern browser understands. However, JavaScript has its
@@ -1175,36 +1174,37 @@ to JavaScript that can run natively in any browser. In addition, it offers power
 libraries for implementing user interfaces using a technique known as *functional reactive
 programming* (FRP). 
 
+![The Elm architecture](diagrams/elm-architecture.png)
+
 In Elm's implementation of FRP, values that may change over time are modeled as *signals*.
-In particular, mouse clicks, text entries, and so on are viewed as a signal of user
-interface events. The current application state is derived from 
+In particular, mouse clicks, text entries, and so on are viewed as a signal of application-specific
+action that instruct an update function how to take the application's model from one state to
+the next, resulting in a signal of application states. Using a function that can map from
+an application state to an application view, we can derive another signal: the application view,
+which changes over time. As a part of building the view at each step, UI events are wired up to
+inject trigger changes to the signal of actions, possibly triggering a model change and view update.
 
-START HERE
+Although it may seem wasteful to repeatedly build up the entire user interface each time the model
+changes, Elm achieves excellent UI performance by using a technique called *Virtual DOM*.
+Repeatedly manipulating the browser's actual document object model (DOM) can be a very costly
+operation. Instead, Elm view functions generate a virtual DOM representation in memory that is then
+compared with the browser's real DOM. Only nodes in the DOM that have changed are actually updated.
 
-modeled with a function that takes
-the entire past history of the signal of UI events and yields a signal of application state.
-Finally, the UI is rendered as a function that maps the current application state
-to the user interface, represented using a virtual implementation of the browser's document
-object model (DOM).
+Traditional JavaScript user interfaces accomplish UI updates by directly mutating the DOM as needed.
+This technique can be efficient, but it is quite error prone. Elm's Virtual DOM implementation offers
+competitive performance while enabling the language's approach of making the application view
+a pure function of the application state. This approach is much more declarative approach, less
+error-prone way of building user interfaces that I have found to be very effectie in practice.
 
-So, in essence, Elm models a user interfaces as:
-a signal of UI events that derives a
-signal of application states that maps to a signal of UI states, with event handlers ready
-to inject new values into the signal of UI events. This is a very clean model and, though
-it may seem inefficient, Elm manages some very impressive performance metrics. For example,
-each step in the rendering phase generates a fully updated data structure with the new
-DOM, but performs a diff between that and the browser's actual DOM to make the actual
-redraw as efficient as possible.
-
-In my experience with Elm, the most important feature is the strong, static type system.
-Like in Haskell, I have been able to write safe, expressive code and make often quite invasive
+Another major benefit of Elm is its strong, static type system.
+Like Haskell, I have been able to write safe, expressive code and make quite invasive
 refactorings with the confidence afforded by a compiler that is able to catch the errors
 that many type systems allow at compile time but that are fatally erroneous at run time.
 
 Moreover, Elm represents an interesting development in the human side of programming language
 design. Haskell's benefits often come at the cost of an obtuse programmer experience with
-cryptic error messages and a preference for abstraction ad absurdum over practical clarity.
-While Elm is still somewhat immature, its developers have put a strong emphasis on accessibility.
+cryptic error messages and a preference for abstraction *ad absurdum* over practical clarity.
+While Elm is still somewhat immature, its developers have placed a strong emphasis on accessibility.
 Error messages are incredibly helpful and libraries are designed with practical usability
 in mind as much as leveraging the deep abstractions available to pure, functional programming.
 
@@ -1216,33 +1216,41 @@ engineer, the vast majority of my time has been on tasks that can best be descri
 software maintenance. Even adding new features to an existing piece of software is in many
 ways a maintenance task, since that new code has to coexist with pre-existing code.
 
-In that light, dynamic languages like PHP, Python, or Ruby, that currently dominate server-side
+In that light, dynamic languages like PHP, Python, or Ruby, languages that currently dominate server-side
 web application development, are ill-equipped to facilitate software development that occurs
 largely in the maintenance phase of the software development life cycle. Being unable to
 depend on compile-time type checking is a serious problem. In that regard, Haskell is a step
 up, but no more than a language like Java.
 
 However, Haskell's other benefits are also valuable. The Servant and Persistent libraries
-demonstrated that its advanced type system could be leveraged to great practical effect in
+demonstrat that Haskell's advanced type system can be leveraged to great practical effect in
 the domain of web API development. In fact, even if it only came down to eliminating the
-possibility of null pointer exceptions, Haskell would be a huge improvement, but its pure
+possibility of null pointer exceptions, Haskell would be a huge improvement. In my experience, its pure
 semantics and functional paradigm are powerful tools for writing code that is easy to reason
-about and refactor, factors that are particularly useful during software maintenance. 
+about and refactor, issues that are particularly important during software maintenance. 
 
 While it may be too soon to recommend moving development teams to a language as radically unfamiliar
-as Haskell, it was quite exciting to see how effective it could be in the sort of programming
-that makes up the day-to-day work in my corner of the industry. My hope is that languages like
-Elm help the paradigm of strongly-typed, pure functional programming languages to make in-roads
+as Haskell, it was quite exciting to see how effective it could be in this domain
+that makes up the day-to-day work in my area of the industry. My hope is that languages like
+Elm can help strongly-typed, pure functional programming languages to make in-roads
 into the web application development world.
 
 ## References
 
 1. "Architectural Styles and the Design of Network-based Software Architectures". Fielding, Roy. 2000. (https://www.ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation.pdf)
+
 2. "Type-level Web APIs with Servant" (http://www.andres-loeh.de/Servant/servant-wgp.pdf)
+
 3. "Haskell 2010 Language Report". Simon Marlow, ed. (https://www.haskell.org/onlinereport/haskell2010/)
+
 4. "Type-Level Literals". (https://downloads.haskell.org/~ghc/7.10.1/docs/html/users_guide/type-level-literals.html)
+
 5. "QuickCheck". Koen Claessen. (https://github.com/nick8325/quickcheck)
-6. "Introducing BDD". Dan North. (http://dannorth.net/introducing-bdd/)
-7. "HSpec: A Testing Framework for Haskell". Simon Hengel. (http://hspec.github.io/)
+
+6. "HSpec: A Testing Framework for Haskell". Simon Hengel. (http://hspec.github.io/)
+
+7. "Introducing BDD". Dan North. (http://dannorth.net/introducing-bdd/)
+
 8. "HSpec-Wai". Fujimura Daisuke, Simon Hengel. (https://github.com/hspec/hspec-wai#readme)
+
 9. "The Elm Architecture". Evan Czaplicki. (https://github.com/evancz/elm-architecture-tutorial)
