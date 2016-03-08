@@ -1154,6 +1154,8 @@ confidence in the correctness of code, is enormous.
 
 ## Future Work
 
+### User Interface
+
 Much more work is needed to get this project to a point where it would be useful to
 end-users. My main focus during the semester I spent working on this was the development
 of the API using a non-mainstream language. As a result, the front-end is still entirely
@@ -1208,6 +1210,53 @@ While Elm is still somewhat immature, its developers have placed a strong emphas
 Error messages are incredibly helpful and libraries are designed with practical usability
 in mind as much as leveraging the deep abstractions available to pure, functional programming.
 
+### Leveraging Haskell
+
+The core idea of the Servant library is to use a type-level domain-specific language (DSL) describing web APIs.
+A description an API encoded in this DSL drives the type checking of implementation code at compile time, 
+informs the behavior of the Servant framework at run time, and enables the generation of documentation and
+code for consuming that API, all from a single definition.
+
+In essence, Servant's API description DSL is a language for modeling one very specific sort of technical
+requirements document: the API documentation that is typically shared between the developers that are
+implementing the API and the developers that the write code that consumes it. 
+
+However, API description DSLs are not new: RESTful API Modeling Language (RAML) [10] or Swagger [11] can be
+useful for generating documentation or client libraries from a common definition. Servant's innovation is to
+embed the API description DSL into the implementation language, tying that same definition directly to its
+implementation. Exploring how this technique of encoding requirements documents in DSLs embedded in the
+implementation language can be extended could be in interesting line of research and as the Servant library
+demonstrates, Haskell's feature set is well-suited for this purpose.
+
+For example, a collection of entity-relationship diagrams could be formalized with a domain modeling language
+embedded in Haskell. The Persistent library's schema definition language takes this approach, where a single
+definition written in its DSL can be used to generate Haskell data types via metaprogramming and execute
+database migrations when the schema changes. However, Persistent's DSL is not really sufficient for
+for describing the relationships between entities in a complex domain model. A more robust description 
+language embedded in Haskell's type system could, for example, unify a formal description of the domain
+model with the generation of entity-relationship diagrams and the implementation of code for querying a 
+data store, ensuring consistency with the domain model via compile-time type checking.
+
+This same technique could also be used to directly codify functional requirements. Behavior-driven development
+techniques encourage developers to link functional requirements to automated tests and the implementation code
+those tests will exercise, but that link is often not formalized. One could imagine a type-level Haskell DSL for
+describing functional requirements. Like the Servant API DSL, the resulting types could be used to type check
+implementation code and enforce the existence of a test implementation with an appropriate type.
+
+Embedding a project's functional requirements in the implementation language, tied directly to the
+test and implementation code, would also offer other benefits in terms of tooling. For example, making the
+the relationship between a requirement, a test, and an implementation manifest in a codebase could aid in
+requirements tracing, particularly when the compiler can be leveraged to keep things synchronized.
+Moreover, in the same way that Servant's framework uses type-level API definitions to handle aspects of
+the HTTP transaction process, a testing framework could use requirement definitions to help set up and tear
+down testing scenarios and leverage the compiler to keep the test suite in sync.
+
+These ideas are quite speculative, and I am not aware of any work along these lines within the Haskell
+community. However, Servant illustrates the potential of using declarative definitions embedded within
+a powerful type system for formalizing requirements to good practical effect. It will be interesting to
+see whether this technique can be extended to further bridge the gap between requirements documents and code
+in a practical way.
+
 ## Conclusion
 
 Despite difficulties using a relatively unfamiliar technology, I found the experience of
@@ -1254,3 +1303,7 @@ into the web application development world.
 8. "HSpec-Wai". Fujimura Daisuke, Simon Hengel. (https://github.com/hspec/hspec-wai#readme)
 
 9. "The Elm Architecture". Evan Czaplicki. (https://github.com/evancz/elm-architecture-tutorial)
+
+10. "RAML Version 1.0: RESTful API Modeling Language". Christian Vogel. (https://github.com/raml-org/raml-spec/blob/raml-10/versions/raml-10/raml-10.md)
+
+11. "Getting Started With Swagger [I] - What Is Swagger?". Ron Ratovsky. (http://swagger.io/getting-started-with-swagger-i-what-is-swagger/)
