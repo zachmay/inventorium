@@ -1,6 +1,4 @@
-# Inventorium: A RESTful Inventory Management API in Haskell
-
-## Description and Motivation
+# Description and Motivation
 
 During the Spring 2015 semester, Dr. Hayes introduced our software engineering class
 to two instructional technology managers from the  Powell County school system.
@@ -54,7 +52,7 @@ are woefully inadequate. For this reason, I chose to explore re-implementing thi
 architecture while making technology choices based on technical factors rather than the
 expediencies required by a time-constrained, large-group project.
 
-## Architecture
+# Architecture
 
 The approach of using virtual machines for development was really the most successful
 part of the original project. With surprisingly few issues, around 20 students were able to
@@ -113,7 +111,7 @@ but as I will discuss below, it has a number of features that make it appealing 
 is often called "line of business" software and not just writing compilers or experimenting
 with type systems and programming language theory.
 
-## The Web API
+# The Web API
 
 Generally, the purpose a web API is to expose the operations of the business domain over HTTP.
 We use an architecture called Representational State Transfer (REST) to accomplish this. Described by
@@ -170,9 +168,9 @@ URLs (a) and (c) address *collections* of entities. HTTP `GET` retrieves a repre
 of the entire collection and `POST` creates a new entity within the collection (with the details
 of the new entity in the request body), while HTTP `PUT` and `DELETE` are not supported.
 
-## Implementation
+# Implementation
 
-### A Short Introduction to Haskell
+## A Short Introduction to Haskell
 
 Before we discuss the specific details of the web API's implementation, I will present 
 a short example that illustrates a few of Haskell's features. The following code sample
@@ -289,12 +287,12 @@ introudction to Haskell, I have made available in the Inventorium project's GitH
 a series of lecture notes on the language written for an independent study done
 during my course work.
 
-### Libraries
+## Libraries
 
 Two Haskell libraries were pivotal to the implementation of the web API: Servant for
 defining and implementing RESTful APIs and Persistent for database access.
 
-**Servant**
+### Servant
 
 The core concept of Servant is to express a REST API as a data type. That data type forms
 a specification of the API that can be used by the compiler to guarantee that the functions
@@ -410,7 +408,7 @@ codes in certain error cases. It is possible Servant understands the HTTP specif
 but Servant is a relatively immature library and these corner cases may be actual bugs. However,
 despite some shortcomings, Servant is a very impressive web development framework.
 
-**Persistent**
+### Persistent
 
 As we have discussed, Inventorium uses PostgreSQL for our application's persistence layer. To interface
 with it, our application issues queries to the database server to retrieve records and execute inserts,
@@ -606,7 +604,7 @@ no value was found, we use `fail404` to short-circuit evaluation and fail, which
 in a 404 response by our application. If we get `Just b`, we found a building that matched
 the primary key, namely the value `b`, and yield that.
 
-### Code Organization and Walkthrough
+## Code Organization and Walkthrough
 
 As we walk through the code, please refer to the project's GitHub repository:
 
@@ -614,7 +612,7 @@ As we walk through the code, please refer to the project's GitHub repository:
 https://github.com/zachmay/inventorium
 ```
 
-**Docker Container Definitions**
+### Docker Container Definitions
 
 Recall that we use Docker to host isolated, virtualized environments (i.e., containers)
 for each of the primary components of our system. The top level of the repository contains
@@ -637,7 +635,7 @@ that they are configured to work with each other, in this case by specifying env
 variables and exposing network ports between containers so that the API server can communicate
 with the database. 
 
-**Cabal Configuration**
+### Cabal Configuration
 
 Before we move to the Haskell source code, we need to look at one more configuration file:
 `site/inventorium.cabal`, a configuration file for Haskell's Cabal package manager. It
@@ -659,7 +657,7 @@ However, this is only a minor concern. GHC is the de facto standard, can target 
 and is the only optimizing Haskell compiler available. Moreover, the general trend in the Haskell community
 is to embrace langauge extensions: both Servant and Persistent make use of them extensively.
 
-**Types**
+### Data Types
 
 Haskell's focus on strong, static typing makes the API's data types a good place to start 
 exploring the Haskell source code. Our application's domain model entities include the
@@ -794,7 +792,7 @@ that Servant can parse them into type-safe values for our application code.
 We will see how these types are used when we look at the type-level definition of our application's
 API in the following section.
 
-**Type-level API Definitions**
+### Type-level API Definitions
 
 For organizational reasons, the project's type-level API definition is spread across three files.
 However, these three sets of definitions are combined and exported by the `Types.Api` module defined in 
@@ -869,7 +867,7 @@ collection of building resources (analogous to a folder containing several files
 `Capture` instructs Servant to capture that fragment of the URL, parse it into a value of type
 `BuildingId`, and to pass that into the handler.
 
-**Handlers**
+### Handlers
 
 Now we will look at the handler functions that service requests to our API's endpoints.
 It is important to note that much of the work of dealing with HTTP requests will be done at this point.
@@ -985,7 +983,7 @@ requested. The handler yields that value as the result of our its computation. A
 handler is finished. Servant uses the type-level API definition to marshall the resulting value into
 whatever encoding was requested and builds up the HTTP response to return to the client.
 
-**Wiring Things Together**
+### Wiring Things Together
 
 With all these details in place, wiring our application together is relatively simple. The API
 server executable starts up when the API server container is brought online. Its entry point is the
@@ -1152,9 +1150,9 @@ the compiler is able to make higher-level guarantees about the correspondnce bet
 your handlers and the API specification. The practical difference, in terms of 
 confidence in the correctness of code, is enormous.
 
-## Future Work
+# Future Work
 
-### User Interface
+## User Interface
 
 Much more work is needed to get this project to a point where it would be useful to
 end-users. My main focus during the semester I spent working on this was the development
@@ -1210,7 +1208,7 @@ While Elm is still somewhat immature, its developers have placed a strong emphas
 Error messages are incredibly helpful and libraries are designed with practical usability
 in mind as much as leveraging the deep abstractions available to pure, functional programming.
 
-### Leveraging Haskell
+## Leveraging Haskell
 
 The core idea of the Servant library is to use a type-level domain-specific language (DSL) describing web APIs.
 A description an API encoded in this DSL drives the type checking of implementation code at compile time, 
@@ -1257,7 +1255,7 @@ a powerful type system for formalizing requirements to good practical effect. It
 see whether this technique can be extended to further bridge the gap between requirements documents and code
 in a practical way.
 
-## Conclusion
+# Conclusion
 
 Despite difficulties using a relatively unfamiliar technology, I found the experience of
 using Haskell to be an extremely positive one. In my professional experience as a software
@@ -1284,7 +1282,7 @@ that makes up the day-to-day work in my area of the industry. My hope is that la
 Elm can help strongly-typed, pure functional programming languages to make in-roads
 into the web application development world.
 
-## References
+# References
 
 1. "Architectural Styles and the Design of Network-based Software Architectures". Fielding, Roy. 2000. (https://www.ics.uci.edu/~fielding/pubs/dissertation/fielding_dissertation.pdf)
 
