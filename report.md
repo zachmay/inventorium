@@ -1,3 +1,5 @@
+# Inventorium: A RESTful Inventory Management API in Haskell
+
 # Description and Motivation
 
 During the Spring 2015 semester, Dr. Hayes introduced our software engineering class
@@ -285,7 +287,11 @@ features. The focus of the rest of the document is on how Haskell was used in th
 project rather than the language itself. For those interested in a more in-depth
 introudction to Haskell, I have made available in the Inventorium project's GitHub repository
 a series of lecture notes on the language written for an independent study done
-during my course work.
+during my course work:
+
+```
+https://github.com/zachmay/inventorium/blob/master/haskell-lecture-notes.pdf
+```
 
 ## Libraries
 
@@ -605,6 +611,11 @@ in a 404 response by our application. If we get `Just b`, we found a building th
 the primary key, namely the value `b`, and yield that.
 
 ## Code Organization and Walkthrough
+
+In all, the project consists of about 1,800 lines of code. The API implementation
+itself consists of about 1,500 lines of Haskell code, plus another 100 for the
+Persistent schema definition file. The rest comprises various utility shell scripts
+along with configuration files for Docker and the Cabal, the Haskell build system.
 
 As we walk through the code, please refer to the project's GitHub repository:
 
