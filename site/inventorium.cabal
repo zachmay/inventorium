@@ -44,10 +44,10 @@ executable inventorium-api
                      , persistent
                      , persistent-postgresql
                      , persistent-template
-                     , servant
-                     , servant-client
-                     , servant-docs
-                     , servant-server
+                     , servant >= 0.4.4 && < 0.5
+                     , servant-client >= 0.4.4 && < 0.5
+                     , servant-docs >= 0.4.4 && < 0.5
+                     , servant-server >= 0.4.4 && < 0.5
                      , stm
                      , text
                      , time
